@@ -19,7 +19,7 @@ pub fn handle(buf: [u8; 1024], address: SocketAddr, socket: Arc<Mutex<UdpSocket>
     // TODO: Should probably match opcode first.
     match question.qtype {
         TYPE::A | TYPE::AAAA => {
-            reply = respond_question(datagram);
+            reply = respond_question(datagram, &address);
         },
         _ => {
             // Forward request as normal if function type not supported
@@ -31,10 +31,11 @@ pub fn handle(buf: [u8; 1024], address: SocketAddr, socket: Arc<Mutex<UdpSocket>
     log::debug!("Sent reply to {} in {} ms", address, recv_time.elapsed().as_millis());
 }
 
-fn respond_question(datagram: Datagram) -> Datagram {
+fn respond_question(datagram: Datagram, address: &SocketAddr) -> Datagram {
     let question = &datagram.questions[0];
     let header = &datagram.header;
     if crate::blocklist::file::is_blocked(&question.qname) {
+        log::info!("Request blocked {} for {}", address.to_string(), &question.qname.to_string());
         return Datagram{
             header: Header{
                 id: header.id,
