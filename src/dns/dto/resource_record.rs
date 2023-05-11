@@ -1,3 +1,5 @@
+use core::fmt;
+
 use super::name::Name;
 use super::enums::{TYPE, CLASS};
 
@@ -56,19 +58,19 @@ impl ResourceRecord {
         bytes.extend_from_slice(self.rdata.as_slice());
         return bytes.into_boxed_slice();
     }
+}
 
-    pub fn to_string(&self) -> String {
-        let mut output = String::from("");
-        output.push_str(&format!("NAME: {}\n", self.name.to_string()));
-        output.push_str(&format!("TYPE: {}\n", self.resource_type.to_string()));
-        output.push_str(&format!("CLASS: {}\n", self.class.to_string()));
-        output.push_str(&format!("TTL: {}\n", self.ttl));
-        output.push_str(&format!("RDLENGTH: {}\n", self.rdlength));
-        output.push_str(&format!("RDATA: {:?}\n", self.rdata));
-
-        output
+impl fmt::Display for ResourceRecord {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "NAME: {}\nTYPE: {}\nCLASS: {}\nTTL: {}\nRDLENGTH: {}\nRDATA: {:?}\n",
+        self.name,
+        self.resource_type,
+        self.class,
+        self.ttl,
+        self.rdlength,
+        self.rdata
+    )
     }
-
 }
 
 #[cfg(test)]

@@ -1,3 +1,5 @@
+use core::fmt;
+
 #[derive(Clone)]
 pub struct Name {
     pub value: String
@@ -46,10 +48,12 @@ impl Name {
         return bytes.into_boxed_slice();
     }
 
-    pub fn to_string(&self) -> String {
-        return self.value.clone();
-    }
+}
 
+impl fmt::Display for Name {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.value.clone())
+    }
 }
 
 #[cfg(test)]

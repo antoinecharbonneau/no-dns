@@ -1,62 +1,120 @@
+use core::fmt;
+
 #[derive(Clone)]
+
+/// # DNS Header
+/// 
+/// The header of a dns packet
+/// 
+/// Contains all the information about the packet.
+/// 
+/// Length: 12 bytes
 pub struct Header {
-    /// ID of the request
+    /// # ID
+    /// 
+    /// Id of the request
+    /// 
     /// Length: 2 bytes
     pub id: u16,
 
-    /// Is a question or a reply
+    /// # QR (Question or Reply)
+    /// 
+    /// If the request is a question or a reply
+    /// 
     /// Length: 1 bit
     pub qr: bool,
 
-    /// Operation code
+    /// # OPCODE (Operation code)
+    /// 
+    /// Operation code of the request
+    /// 
+    /// See OPCODE enum for more details
+    /// 
     /// Length: 4 bits
     pub opcode: OPCODE,
 
-    /// Is an authoritive answer
+    /// # AA (Authoritative answer)
+    /// 
+    /// If the response comes from an authority
+    /// 
     /// Length: 1 bit
     pub aa: bool,
 
-    /// Is the message truncated
+    /// # TC (Truncated)
+    /// 
+    /// Whether the message is truncated and should be retried
+    /// over a TCP connection.
+    /// 
     /// Length: 1 bit
     pub tc: bool,
 
+    /// # RC (Recursion desired)
+    /// 
     /// Is recursion desired
+    /// 
     /// Length: 1 bit
     pub rd: bool, 
 
-    /// Is recursion available
+    /// # RA (Recursion available)
+    /// 
+    ///  Is recursion available
+    /// 
     /// Length: 1 bit
     pub ra: bool,
 
-    /// Future use
+    /// # Z (Future use)
+    /// 
+    /// Set to 0 by default, but followed on automatically
+    /// 
     /// Length: 1 bit
     pub z: bool,
 
+    /// # AD (Authenticated data)
+    /// 
     /// Is it verified data (DNSSEC)
+    /// 
     /// Length: 1 bit
     pub ad: bool,
 
+    /// # CD (Checked data)
+    /// 
     /// Is unverified data accepted (DNSSEC)
+    /// 
     /// Length: 1 bit
     pub cd: bool,
 
-    /// Response code
+    /// RCODE (Response code)
+    /// 
+    /// The response code from the server
+    /// 
     /// Length: 4 bit
     pub rcode: RCODE,
 
-    /// Question count
+    /// # QDCOUNT (Question count)
+    /// 
+    /// How many questions the packet contains
+    /// 
     /// Length: 2 bytes
     pub qdcount: u16,
 
-    /// Answer resource record count
+    /// # ANCOUNT (Answer count)
+    /// 
+    /// How many answer resource records the packet contains
+    /// 
     /// Length: 2 bytes
     pub ancount: u16,
 
-    /// Authority resource record count
+    /// # NSCOUNT (Authority count)
+    /// 
+    /// How many authority resource records the packet contains
+    /// 
     /// Length: 2 bytes
     pub nscount: u16,
 
-    /// Additional resource record count
+    /// # ARCOUNT (Additional count)
+    /// 
+    /// How many additional resource records the packet contains
+    /// 
     /// Length: 2 bytes
     pub arcount: u16,
 }
@@ -100,28 +158,48 @@ impl Header {
         header_bytes
     }
 
-    pub fn to_string(&self) -> String {
-        let mut output = String::from("");
-        output.push_str(&format!("ID: {}\n", self.id));
-        output.push_str(&format!("QR: {}\n", self.qr));
-        output.push_str(&format!("OPCODE: {}\n", self.opcode.to_string()));
-        output.push_str(&format!("AA: {}\n", self.aa));
-        output.push_str(&format!("TC: {}\n", self.tc));
-        output.push_str(&format!("RD: {}\n", self.rd));
-        output.push_str(&format!("RA: {}\n", self.ra));
-        output.push_str(&format!("Z: {}\n", self.z));
-        output.push_str(&format!("AD: {}\n", self.ad));
-        output.push_str(&format!("CD: {}\n", self.cd));
-        output.push_str(&format!("RCODE: {}\n", self.rcode.to_string()));
-        output.push_str(&format!("QDCOUNT: {}\n", self.qdcount));
-        output.push_str(&format!("ANCOUNT: {}\n", self.ancount));
-        output.push_str(&format!("NSCOUNT: {}\n", self.nscount));
-        output.push_str(&format!("ARCOUNT: {}\n", self.arcount));
-
-        output
-    }
-
     pub const LENGTH: u16 = 0x0C;
+}
+
+impl fmt::Display for Header {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f,
+            "ID: {}\nQR: {}\nOPCODE: {}\nAA: {}\nTC: {}\nRD: {}\nRA: {}\nZ: {}\nAD: {}\nCD: {}\nRCODE: {}\nQDCOUNT: {}\nANCOUNT: {}\nNSCOUNT: {}\nARCOUNT: {}\n",
+            self.id,
+            self.qr,
+            self.opcode,
+            self.aa,
+            self.tc,
+            self.rd,
+            self.ra,
+            self.z,
+            self.ad,
+            self.cd,
+            self.rcode,
+            self.qdcount,
+            self.ancount,
+            self.nscount,
+            self.arcount
+        )
+        // let mut output = String::from("");
+        // output.push_str(&format!("ID: {}\n", self.id));
+        // output.push_str(&format!("QR: {}\n", self.qr));
+        // output.push_str(&format!("OPCODE: {}\n", self.opcode.to_string()));
+        // output.push_str(&format!("AA: {}\n", self.aa));
+        // output.push_str(&format!("TC: {}\n", self.tc));
+        // output.push_str(&format!("RD: {}\n", self.rd));
+        // output.push_str(&format!("RA: {}\n", self.ra));
+        // output.push_str(&format!("Z: {}\n", self.z));
+        // output.push_str(&format!("AD: {}\n", self.ad));
+        // output.push_str(&format!("CD: {}\n", self.cd));
+        // output.push_str(&format!("RCODE: {}\n", self.rcode.to_string()));
+        // output.push_str(&format!("QDCOUNT: {}\n", self.qdcount));
+        // output.push_str(&format!("ANCOUNT: {}\n", self.ancount));
+        // output.push_str(&format!("NSCOUNT: {}\n", self.nscount));
+        // output.push_str(&format!("ARCOUNT: {}\n", self.arcount));
+
+        // output
+    }
 }
 
 #[derive(Clone)]
@@ -176,8 +254,10 @@ impl OPCODE {
 
         return result;
     }
+}
 
-    pub fn to_string(&self) -> String {
+impl fmt::Display for OPCODE {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let result: String;
         match self {
             OPCODE::QUERY => result = String::from("Query"),
@@ -189,7 +269,7 @@ impl OPCODE {
             OPCODE::NotImplemented(value) => result = format!("Not implemented: {}", *value),
         };
 
-        return result;
+        write!(f, "{result}")
     }
 }
 
@@ -237,8 +317,10 @@ impl RCODE {
 
         return result;
     }
+}
 
-    pub fn to_string(&self) -> String {
+impl fmt::Display for RCODE {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let result: String;
         match self {
             RCODE::NoError => result = String::from("No error"),
@@ -250,7 +332,7 @@ impl RCODE {
             RCODE::NotImplemented(value) => result = format!("Value not implemented: {}", *value),
         };
 
-        return result;
+        write!(f, "{result}")
     }
 }
 

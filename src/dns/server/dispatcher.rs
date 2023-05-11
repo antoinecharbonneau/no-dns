@@ -28,8 +28,8 @@ fn dispatch_udp_requests(arc_socket: Arc<Mutex<UdpSocket>>) {
         
         match result {
             Ok((bytes, client_address)) => {
-                log::info!("Received connection from {} of length {}", client_address.to_string(), bytes);
-                log::debug!("Spawning thread to handle connection from {}", client_address.to_string());
+                log::info!("Received connection from {} of length {}", client_address, bytes);
+                log::debug!("Spawning thread to handle connection from {}", client_address);
                 let arc_socket_clone = Arc::clone(&arc_socket);
                 thread::spawn(move || {
                     responder::handle(buf, client_address, arc_socket_clone);

@@ -1,8 +1,36 @@
+use core::fmt;
+
 #[derive(Clone)]
 #[repr(u16)]
+/// # TYPE
+/// 
+/// The type of the record.
+/// 
+/// ## More info
+/// 
+/// The functioning of types is specified in RFC 1035
+/// and extended in many RFCs.
+/// 
+/// https://en.wikipedia.org/wiki/List_of_DNS_record_types
 pub enum TYPE {
+    /// # A type
+    /// 
+    /// IPv4 IP request
     A = 1,
+
+    /// # AAAA type
+    /// 
+    /// IPv6 IP request
     AAAA = 28,
+
+    /// # Not yet implemented
+    /// 
+    /// Used to keep compatibility with unimplemented types.
+    /// 
+    /// ## Behavior
+    /// 
+    /// Default behavior is to forward the request to an upstream
+    /// server which hopefully will know how to handle the given request
     NotImplemented(u16),
 }
 
@@ -31,9 +59,10 @@ impl TYPE {
 
         return result;
     }
+}
 
-    pub fn to_string(&self) -> String {
-        
+impl fmt::Display for TYPE {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let result: String;
         match self {
             TYPE::A => result = String::from("IPv4 host address"),
@@ -41,13 +70,23 @@ impl TYPE {
 
             TYPE::NotImplemented(value) => result = format!("Not implemented: {}", value),
         }
-
-        return result;
+        write!(f, "{result}")
     }
 }
 
 #[derive(Clone)]
 #[repr(u16)]
+/// # CLASS
+/// 
+/// The class of the record
+/// 
+/// ## More info
+/// 
+/// Almost always IN (Internet), but 2 more values currently exist:
+/// HS (Hesiod) and CH (Chaos).
+/// 
+/// Not really used, only IN class is implemented, others are forwarded
+/// to upstream.
 pub enum CLASS {
     IN = 1,
     NotImplemented(u16),
@@ -71,13 +110,16 @@ impl CLASS {
         }
         return result;
     }
+}
 
-    pub fn to_string(&self) -> String {
+
+impl fmt::Display for CLASS {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let result: String;
         match self {
             CLASS::IN => result = String::from("IN (Internet)"),
             CLASS::NotImplemented(value) => result = format!("Not implemented: {}", *value),
         }
-        return result;
+        write!(f, "{result}")
     }
 }

@@ -7,7 +7,7 @@ use crate::cli;
 pub fn handle(buf: [u8; 1024], address: SocketAddr, socket: Arc<Mutex<UdpSocket>>) {
     let recv_time = Instant::now();
     let datagram = Datagram::unserialize(&buf);
-    log::debug!("Received datagram from {}\n{}", address.to_string(), datagram.to_string());
+    log::debug!("Received datagram from {}\n{}", address, datagram);
 
     // TODO: Handle questions async?
     // or maybe prepare all questions asynchronously, then
@@ -35,7 +35,7 @@ fn respond_question(datagram: Datagram, address: &SocketAddr) -> Datagram {
     let question = &datagram.questions[0];
     let header = &datagram.header;
     if crate::blocklist::file::is_blocked(&question.qname) {
-        log::info!("Request blocked {} for {}", address.to_string(), &question.qname.to_string());
+        log::info!("Request blocked {} for {}", address, &question.qname);
         return Datagram{
             header: Header{
                 id: header.id,
@@ -78,6 +78,6 @@ fn forward_request(datagram: &Datagram) -> Datagram {
     
     let receiving_delay = send_time.elapsed().as_millis();
     let reply = Datagram::unserialize(&buf);
-    log::debug!("Received reply from {} in {} ms\n{}", upstream_addr, receiving_delay, reply.to_string());
+    log::debug!("Received reply from {} in {} ms\n{}", upstream_addr, receiving_delay, reply);
     return reply;
 }

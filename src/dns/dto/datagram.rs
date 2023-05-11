@@ -1,7 +1,23 @@
+use core::fmt;
+
 use super::header::Header;
 use super::question::Question;
 use super::resource_record::ResourceRecord;
 
+/// # DNS datagram
+/// 
+/// Contains a complete DNS request.
+/// 
+/// ## Structure
+/// Header (12 bytes)
+/// 
+/// x Questions
+/// 
+/// y Answers (Resource record)
+/// 
+/// z Authorities (Resource record)
+/// 
+/// w Additionals (Resource record)
 pub struct Datagram {
     pub header: Header,
     pub questions: Box<[Question]>,
@@ -74,26 +90,27 @@ impl Datagram {
 
         return bytes.into_boxed_slice();
     }
+}
 
-    pub fn to_string(&self) -> String {
+impl fmt::Display for Datagram {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut output = String::from("");
         output.push_str(&format!("HEADER\n{}", self.header.to_string()));
         for i in 0..self.header.qdcount as usize {
-            output.push_str(&format!("Question {}\n{}", i, &self.questions.get(i).expect("Question index does not exist").to_string()));
+            output.push_str(&format!("Question {}\n{}", i, &self.questions.get(i).expect("Question index does not exist")));
         }
         for i in 0..self.header.ancount as usize {
-            output.push_str(&format!("Answer {}\n{}", i, &self.answers.get(i).expect("Answer index does not exist").to_string()));
+            output.push_str(&format!("Answer {}\n{}", i, &self.answers.get(i).expect("Answer index does not exist")));
         }
         for i in 0..self.header.nscount as usize {
-            output.push_str(&format!("Authority {}\n{}", i, &self.authorities.get(i).expect("Authority index does not exist").to_string()));
+            output.push_str(&format!("Authority {}\n{}", i, &self.authorities.get(i).expect("Authority index does not exist")));
         }
         for i in 0..self.header.arcount as usize {
-            output.push_str(&format!("Additional {}\n{}", i, &self.additionals.get(i).expect("Additional index does not exist").to_string()));
+            output.push_str(&format!("Additional {}\n{}", i, &self.additionals.get(i).expect("Additional index does not exist")));
         }
 
-        return output;
+        write!(f, "{output}")
     }
-
 }
 
 #[cfg(test)]

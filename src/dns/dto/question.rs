@@ -1,15 +1,32 @@
 use super::name::Name;
 use super::enums::{TYPE, CLASS};
+use core::fmt;
 
 #[derive(Clone)]
 pub struct Question {
-    /// Name used in the question.
+    /// # QNAME (Question name)
+    /// 
+    /// The domain name used in the question.
+    /// 
+    /// Length: Dynamic (see Name struct for more informations)
     pub qname: Name,
 
-    /// Question type
+    /// # QTYPE (Question Type)
+    /// 
+    /// The type of the resource prompted
+    /// 
+    /// See TYPE enum for more details
+    /// 
+    /// Length: 2 bytes
     pub qtype: TYPE,
 
-    /// Question class
+    /// # QCLASS (Question Class)
+    /// 
+    /// The class of the resource prompted
+    /// 
+    /// See CLASS enum for more details
+    /// 
+    /// Length: 2 bytes
     pub qclass: CLASS,
 }
 
@@ -35,12 +52,14 @@ impl Question {
 
         return bytes.into_boxed_slice();
     }
-
-    pub fn to_string(&self) -> String {
-        return format!("QNAME: {}\nQTYPE: {}\nQCLASS: {}\n", self.qname.to_string(), self.qtype.to_string(), self.qclass.to_string())
-    }
-
 }
+
+impl fmt::Display for Question {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "QNAME: {}\nQTYPE: {}\nQCLASS: {}\n", self.qname, self.qtype, self.qclass)
+    }
+}
+
 
 
 #[cfg(test)]
