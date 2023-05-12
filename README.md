@@ -5,7 +5,7 @@ DNS proxy server written in Rust that helps you fight against distractions.
 
 ## Features
 
-* Multithreading for parallel processing of incoming requests.
+* Multithreading to process multiple requests simultaneously.
 * Blocklist with elementary matching
 * Caching for lower latency on common requests
 
@@ -32,3 +32,11 @@ To block every subdomain to a domain, use an asterisk :
     *.google.com
     *.io
 
+## Planned features
+
+* More flexible blocklist (i.e. blocking between time periods, blocking for specific IPs)
+* Add domain compression on serializing
+* TCP fallback
+* Better logging
+* Metrics (requests rate, cache hit, request blocked)
+* Multithreading to process sub-elements of a given request.
