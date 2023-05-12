@@ -3,6 +3,12 @@
 No DNS is a reasonably performant multithreaded 
 DNS proxy server written in Rust that helps you fight against distractions.
 
+## Features
+
+* Multithreading for parallel processing of incoming requests.
+* Blocklist with elementary matching
+* Caching for lower latency on common requests
+
 ## Using No DNS
 
 To use No DNS with a custom blocklist, run it with the `f` flag to specify the blocklist, the `b` flag to select the binding address, and the `u` flag to choose your upstream dns server.
