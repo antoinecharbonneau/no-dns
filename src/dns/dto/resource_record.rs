@@ -2,25 +2,27 @@ use core::fmt;
 
 use super::name::Name;
 use super::enums::{TYPE, CLASS};
+use super::question::Question;
 
+#[derive(Clone, PartialEq)]
 pub struct ResourceRecord {
     /// Name field of the resource record
-    name: Name,
+    pub name: Name,
 
     /// Type of resource record
-    resource_type: TYPE,
+    pub resource_type: TYPE,
 
     /// Class of resource record
-    class: CLASS,
+    pub class: CLASS,
 
     /// Time to live (seconds)
-    ttl: u32,
+    pub ttl: u32,
 
     /// Number of bytes in RDATA
-    rdlength: u16,
+    pub rdlength: u16,
 
     /// Resource data
-    rdata: Vec<u8>,
+    pub rdata: Vec<u8>,
 }
 
 impl ResourceRecord {
@@ -58,6 +60,14 @@ impl ResourceRecord {
         bytes.extend_from_slice(self.rdata.as_slice());
         return bytes.into_boxed_slice();
     }
+
+    pub fn get_question(&self) -> Question {
+        return Question {
+            qname: self.name.clone(),
+            qtype: self.resource_type.clone(),
+            qclass: self.class.clone(),
+        }
+    }
 }
 
 impl fmt::Display for ResourceRecord {
@@ -70,6 +80,12 @@ impl fmt::Display for ResourceRecord {
         self.rdlength,
         self.rdata
     )
+    }
+}
+
+impl fmt::Debug for ResourceRecord {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{self}")
     }
 }
 

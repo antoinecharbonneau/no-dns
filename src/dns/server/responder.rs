@@ -1,7 +1,13 @@
 use std::net::{SocketAddr, UdpSocket};
 use std::sync::{Mutex, Arc};
 use std::time::Instant;
-use crate::dns::dto::{datagram::Datagram, header::{Header, RCODE}, enums::TYPE};
+use crate::dns::dto::{
+    datagram::Datagram,
+    header::{Header, RCODE},
+    enums::TYPE,
+    resource_record::ResourceRecord,
+};
+use crate::dns::cache::CACHE;
 use crate::cli;
 
 pub fn handle(buf: [u8; 1024], address: SocketAddr, socket: Arc<Mutex<UdpSocket>>) {
@@ -19,11 +25,11 @@ pub fn handle(buf: [u8; 1024], address: SocketAddr, socket: Arc<Mutex<UdpSocket>
     // TODO: Should probably match opcode first.
     match question.qtype {
         TYPE::A | TYPE::AAAA => {
-            reply = respond_question(datagram, &address);
+            reply = respond_question(&datagram, &address);
         },
         _ => {
             // Forward request as normal if function type not supported
-            reply = forward_request(&datagram);
+            reply = get_forwarded_answer(&datagram).unwrap();
         }
     }
     (*socket).lock().unwrap().send_to(&reply.serialize(), address).expect(&format!("Couldn't reply to {}", &address));
@@ -31,40 +37,70 @@ pub fn handle(buf: [u8; 1024], address: SocketAddr, socket: Arc<Mutex<UdpSocket>
     log::debug!("Sent reply to {} in {} ms", address, recv_time.elapsed().as_millis());
 }
 
-fn respond_question(datagram: Datagram, address: &SocketAddr) -> Datagram {
-    let question = &datagram.questions[0];
-    let header = &datagram.header;
-    if crate::blocklist::file::is_blocked(&question.qname) {
-        log::info!("Request blocked {} for {}", address, &question.qname);
-        return Datagram{
-            header: Header{
-                id: header.id,
-                qr: true,
-                opcode: header.opcode.clone(),
-                aa: false,
-                tc: false,
-                rd: header.rd,
-                ra: true,
-                z: false,
-                ad: header.ad,
-                cd: header.cd,
-                rcode: RCODE::NXDomain,
-                qdcount: 1,
-                ancount: 0,
-                nscount: 0,
-                arcount: 0, 
-            },
-            questions: Box::new([question.clone()]),
-            answers: Box::new([]),
-            authorities: Box::new([]),
-            additionals: Box::new([]),
-        }
+fn respond_question(datagram: &Datagram, address: &SocketAddr) -> Datagram {
+    if let Some(blocked_answer) = get_blocked_answer(datagram) {
+        log::info!("Blocked {} for {}", datagram.questions.get(0).unwrap().qname, address);
+        return blocked_answer;
+    }
+    if let Some(cached_answer) = get_cached_answer(datagram) {
+        log::debug!("Cache hit on {} for {}", datagram.questions.get(0).unwrap().qname, address);
+        return cached_answer;
+    }
+    if let Some(forwarded_answer) = get_forwarded_answer(datagram) {
+        log::debug!("Forwarded {} request for {}", datagram.questions.get(0).unwrap().qname, address);
+        return forwarded_answer;
     } else {
-        return forward_request(&datagram);
+        log::error!("Couldn't connect to upstream.");
+        return empty_answer(datagram);
     }
 }
 
-fn forward_request(datagram: &Datagram) -> Datagram {
+fn get_blocked_answer(datagram: &Datagram) -> Option<Datagram> {
+    // TODO: Add address so that blocking can be done on a per address basis ?
+    let question = &datagram.questions[0];
+    if crate::blocklist::file::is_blocked(&question.qname) {
+        return Some(empty_answer(&datagram))
+    } else {
+        return None;
+    }
+}
+
+fn get_cached_answer(datagram: &Datagram) -> Option<Datagram> {
+    let question = &datagram.questions[0];
+    let header = &datagram.header;
+    let cache_result: Option<ResourceRecord>;
+    unsafe {cache_result = CACHE.get(question);}
+    match cache_result {
+        Some(answer) => {
+            return Some(Datagram{
+                header: Header{
+                    id: header.id,
+                    qr: true,
+                    opcode: header.opcode.clone(),
+                    aa: false,
+                    tc: false,
+                    rd: header.rd,
+                    ra: true,
+                    z: false,
+                    ad: header.ad,
+                    cd: header.cd,
+                    rcode: RCODE::NoError,
+                    qdcount: 1,
+                    ancount: 1,
+                    nscount: 0,
+                    arcount: 0, 
+                },
+                questions: Box::new([question.clone()]),
+                answers: Box::new([answer]),
+                authorities: Box::new([]),
+                additionals: Box::new([]),
+            })
+        },
+        None => return None,
+    }
+}
+
+fn get_forwarded_answer(datagram: &Datagram) -> Option<Datagram> {
     // TODO: Add TCP capabilities logic
     let upstream_addr: SocketAddr = cli::Args::get_params().get_upstream();
     let client_socket: UdpSocket = UdpSocket::bind("0.0.0.0:0").expect("Couldn't create a receiving socket");
@@ -78,6 +114,39 @@ fn forward_request(datagram: &Datagram) -> Datagram {
     
     let receiving_delay = send_time.elapsed().as_millis();
     let reply = Datagram::unserialize(&buf);
+
+    for i in 0..reply.header.ancount as usize {
+        let answer = reply.answers.get(i)?;
+
+        unsafe {CACHE.insert(&answer.get_question(), answer.clone());}
+    } 
+
     log::debug!("Received reply from {} in {} ms\n{}", upstream_addr, receiving_delay, reply);
-    return reply;
+    return Some(reply);
+}
+
+fn empty_answer(datagram: &Datagram) -> Datagram {
+    Datagram{
+        header: Header{
+            id: datagram.header.id,
+            qr: true,
+            opcode: datagram.header.opcode.clone(),
+            aa: false,
+            tc: false,
+            rd: datagram.header.rd,
+            ra: true,
+            z: false,
+            ad: datagram.header.ad,
+            cd: datagram.header.cd,
+            rcode: RCODE::NXDomain,
+            qdcount: 1,
+            ancount: 0,
+            nscount: 0,
+            arcount: 0, 
+        },
+        questions: Box::new([datagram.questions.get(0).unwrap().clone()]),
+        answers: Box::new([]),
+        authorities: Box::new([]),
+        additionals: Box::new([]),
+    }
 }

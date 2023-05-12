@@ -1,6 +1,6 @@
 use core::fmt;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 #[repr(u16)]
 /// # TYPE
 /// 
@@ -74,7 +74,7 @@ impl fmt::Display for TYPE {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 #[repr(u16)]
 /// # CLASS
 /// 

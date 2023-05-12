@@ -2,7 +2,7 @@ use super::name::Name;
 use super::enums::{TYPE, CLASS};
 use core::fmt;
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Question {
     /// # QNAME (Question name)
     /// 
