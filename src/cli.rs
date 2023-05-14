@@ -13,7 +13,7 @@ pub struct Args {
     pub file: String,
 
     /// Socket address to bind the application to.
-    #[arg(short, long, default_value_t = String::from("0.0.0.0:1053"))]
+    #[arg(short, long, default_value_t = String::from("0.0.0.0:53"))]
     pub bind: String,
 
     /// Upstream DNS server IP
