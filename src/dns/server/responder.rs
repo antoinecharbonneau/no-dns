@@ -7,7 +7,7 @@ use crate::dns::dto::{
     enums::TYPE,
     resource_record::ResourceRecord,
 };
-use crate::dns::cache::CACHE;
+use crate::dns::cache::Cache;
 use crate::cli;
 
 pub fn handle(buf: [u8; 1024], address: SocketAddr, socket: Arc<Mutex<UdpSocket>>) {
@@ -68,8 +68,7 @@ fn get_blocked_answer(datagram: &Datagram) -> Option<Datagram> {
 fn get_cached_answer(datagram: &Datagram) -> Option<Datagram> {
     let question = &datagram.questions[0];
     let header = &datagram.header;
-    let cache_result: Option<ResourceRecord>;
-    unsafe {cache_result = CACHE.get(question);}
+    let cache_result = Cache::get(question);
     match cache_result {
         Some(answer) => {
             return Some(Datagram{
@@ -118,7 +117,7 @@ fn get_forwarded_answer(datagram: &Datagram) -> Option<Datagram> {
     for i in 0..reply.header.ancount as usize {
         let answer = reply.answers.get(i)?;
 
-        unsafe {CACHE.insert(&answer.get_question(), answer.clone());}
+        Cache::insert(&answer.get_question(), answer.clone());
     } 
 
     log::debug!("Received reply from {} in {} ms\n{}", upstream_addr, receiving_delay, reply);

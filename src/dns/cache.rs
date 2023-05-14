@@ -6,7 +6,7 @@ use super::dto::question::Question;
 use super::dto::resource_record::ResourceRecord;
 
 
-pub static mut CACHE: Cache = Cache{
+static mut CACHE: Cache = Cache{
     hash_map: None,
 };
 
@@ -15,14 +15,17 @@ pub struct Cache {
 }
 
 impl Cache {
-    pub fn init(&mut self) {
-        if self.hash_map.is_none() {
-            self.hash_map = Some(RwLock::new(HashMap::new()));
+    pub fn init() {
+        unsafe {
+            if CACHE.hash_map.is_none() {
+                CACHE.hash_map = Some(RwLock::new(HashMap::new()));
+           }
         }
     }
 
-    pub fn get(&self, question: &Question) -> Option<ResourceRecord> {
-        let binding = self.hash_map.as_ref().expect("Cache hashmap not initialized");
+    pub fn get(question: &Question) -> Option<ResourceRecord> {
+        let binding;
+        unsafe {binding = CACHE.hash_map.as_ref().expect("Cache hashmap not initialized");}
         let hash_map_reader = binding.read().expect("Cache lock poisoned");
         let result: Option<(ResourceRecord, Instant)> = hash_map_reader.get(&question).cloned();
         drop(hash_map_reader);
@@ -41,8 +44,9 @@ impl Cache {
         }
     }
 
-    pub fn insert(&self, question: &Question, rr: ResourceRecord) {
-        let binding = self.hash_map.as_ref().expect("Cache hashmap not initialized");
+    pub fn insert(question: &Question, rr: ResourceRecord) {
+        let binding;
+        unsafe {binding = CACHE.hash_map.as_ref().expect("Cache hashmap not initialized");}
         let mut hash_map_writer = binding.write().expect("Cache lock poisoned");
         hash_map_writer.insert(question.clone(), (rr, Instant::now()));
     }
@@ -57,7 +61,7 @@ mod tests {
     use crate::dns::dto::{enums::{TYPE, CLASS}, name::Name};
 
     fn prepare_test() {
-        unsafe { CACHE.init(); }
+        unsafe { Cache::init(); }
     }
 
     #[test]
@@ -77,10 +81,10 @@ mod tests {
             rdlength: 4,
             rdata: vec![8, 8, 8, 8],
         };
-        unsafe {CACHE.insert(&question, answer.clone())}
+        unsafe {Cache::insert(&question, answer.clone())}
 
         let reply: Option<ResourceRecord>;
-        unsafe {reply = CACHE.get(&question)}
+        unsafe {reply = Cache::get(&question)}
         assert_eq!(reply.unwrap(), answer);
         
 
@@ -91,7 +95,7 @@ mod tests {
         };
 
         let reply: Option<ResourceRecord>;
-        unsafe {reply = CACHE.get(&question)}
+        unsafe {reply = Cache::get(&question)}
         assert!(reply.is_none());
     }
 
@@ -112,16 +116,16 @@ mod tests {
             rdlength: 4,
             rdata: vec![8, 8, 8, 8],
         };
-        unsafe {CACHE.insert(&question, answer.clone())}
+        unsafe {Cache::insert(&question, answer.clone())}
 
 
         let mut reply: Option<ResourceRecord>;
-        unsafe {reply = CACHE.get(&question)}
+        unsafe {reply = Cache::get(&question)}
         assert!(reply.is_some());
 
         sleep(Duration::from_secs(1));
 
-        unsafe {reply = CACHE.get(&question)}
+        unsafe {reply = Cache::get(&question)}
         assert!(reply.is_none());
 
     }
