@@ -69,12 +69,12 @@ mod tests {
         prepare_test();
 
         let question = Question {
-            qname: Name {value: String::from("google.com")},
+            qname: Name::from("google.com"),
             qtype: TYPE::A,
             qclass: CLASS::IN,
         };
         let answer = ResourceRecord {
-            name: Name {value: String::from("google.com")},
+            name: Name::from("google.com"),
             resource_type: TYPE::A,
             class: CLASS::IN,
             ttl: 10,
@@ -89,7 +89,7 @@ mod tests {
         
 
         let question = Question {
-            qname: Name {value: String::from("bing.com")},
+            qname: Name::from("bing.com"),
             qtype: TYPE::A,
             qclass: CLASS::IN,
         };
@@ -104,12 +104,12 @@ mod tests {
         prepare_test();
 
         let question = Question {
-            qname: Name {value: String::from("google.com")},
+            qname: Name::from("google.com"),
             qtype: TYPE::A,
             qclass: CLASS::IN,
         };
         let answer = ResourceRecord {
-            name: Name {value: String::from("google.com")},
+            name: Name::from("google.com"),
             resource_type: TYPE::A,
             class: CLASS::IN,
             ttl: 1,

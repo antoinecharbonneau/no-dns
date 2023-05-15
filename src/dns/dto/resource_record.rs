@@ -28,7 +28,7 @@ pub struct ResourceRecord {
 impl ResourceRecord {
 
     pub fn unserialize(stream: &[u8], offset: u16) -> (ResourceRecord, u16) {
-        let (name, mut i) = Name::unserialize(stream, offset);
+        let (name, mut i) = Name::unserialize(stream, offset as usize).unwrap();
         let resource_type = TYPE::from_u16((stream[i as usize] as u16) << 8 | stream[(i + 1) as usize] as u16);
         i += 2;
         let class = CLASS::from_u16((stream[i as usize] as u16) << 8 | stream[(i + 1) as usize] as u16);
@@ -37,9 +37,9 @@ impl ResourceRecord {
         i += 4;
         let rdlength = (stream[i as usize] as u16) << 8 | stream[(i + 1) as usize] as u16;
         i += 2;
-        let rdata = stream[i as usize..(i + rdlength) as usize].to_vec();
-        i += rdlength;
-        return (ResourceRecord{name, resource_type, class, ttl, rdlength, rdata}, i);
+        let rdata = stream[i as usize..i + rdlength as usize].to_vec();
+        i += rdlength as usize;
+        return (ResourceRecord{name, resource_type, class, ttl, rdlength, rdata}, i as u16);
     }
 
     pub fn serialize(&self) -> Box<[u8]> {
@@ -99,7 +99,7 @@ mod tests {
         let expected_offset = rr_bytes.len();
         let (rr, offset) = ResourceRecord::unserialize(&rr_bytes, 0);
         assert_eq!(offset as usize, expected_offset);
-        assert_eq!(rr.name.value, "www.google.com");
+        assert_eq!(rr.name.to_string(), "www.google.com");
         assert_eq!(rr.resource_type.to_u16(), 1);
         assert_eq!(rr.class.to_u16(), 1);
         assert_eq!(rr.ttl, 3600);
@@ -113,7 +113,7 @@ mod tests {
         let expected_offset = rr_bytes.len();
         let (rr, offset) = ResourceRecord::unserialize(&rr_bytes, 1);
         assert_eq!(offset as usize, expected_offset);
-        assert_eq!(rr.name.value, "");
+        assert_eq!(rr.name.to_string(), "");
         assert_eq!(rr.resource_type.to_u16(), 0);
         assert_eq!(rr.class.to_u16(), 0);
         assert_eq!(rr.ttl, 15);
@@ -126,7 +126,7 @@ mod tests {
     fn basic_serialize_test() {
         let rr_bytes = [3, b'w', b'w', b'w', 6, b'g', b'o', b'o', b'g', b'l', b'e', 3, b'c', b'o', b'm', 0, 0x00, 0x01, 0x00, 0x01, 0, 0, 0x0E, 0x10, 0x00, 0x04, 172, 217, 13, 132];
         let rr = ResourceRecord{
-            name: Name{value: String::from("www.google.com")},
+            name: Name::from("www.google.com"),
             resource_type: TYPE::from_u16(1),
             class: CLASS::from_u16(1),
             ttl: 3600,

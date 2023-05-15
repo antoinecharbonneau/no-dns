@@ -118,7 +118,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn basic_serialize_test() {
+    fn basic_unserialize_serialize_test() {
         let datagram_bytes = [
             // header
             0x44, 0x44, 0b10000000, 0b00000000, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,

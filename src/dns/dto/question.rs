@@ -32,12 +32,12 @@ pub struct Question {
 
 impl Question {
     pub fn unserialize(stream: &[u8], offset: u16) -> (Question, u16) {
-        let (qname, mut i) = Name::unserialize(stream, offset);
+        let (qname, mut i) = Name::unserialize(stream, offset as usize).unwrap();
         let qtype = TYPE::from_u16((stream[i as usize] as u16) << 8 | stream[(i + 1) as usize] as u16);
         i += 2;
         let qclass = CLASS::from_u16((stream[i as usize] as u16) << 8 | stream[(i + 1) as usize] as u16);
         i += 2;
-        return (Question{qname, qtype, qclass}, i);
+        return (Question{qname, qtype, qclass}, i as u16);
     }
 
     pub fn serialize(&self) -> Box<[u8]> {
@@ -71,7 +71,7 @@ mod tests {
         let question_bytes = [3, b'w', b'w', b'w', 6, b'g', b'o', b'o', b'g', b'l', b'e', 3, b'c', b'o', b'm', 0, 0x44, 0x22, 0x01, 0x10];
         let (question, offset) = Question::unserialize(&question_bytes, 0);
         assert_eq!(offset as usize, question_bytes.len());
-        assert_eq!(question.qname.value, "www.google.com");
+        assert_eq!(question.qname.to_string(), "www.google.com");
         assert_eq!(question.qtype.to_u16(), 0x4422);
         assert_eq!(question.qclass.to_u16(), 0x0110);
 
@@ -79,7 +79,7 @@ mod tests {
         let question_bytes = [0, 0, 0, 0, 3, b'w', b'w', b'w', 6, b'g', b'o', b'o', b'g', b'l', b'e', 3, b'c', b'o', b'm', 0, 0x44, 0x22, 0x01, 0x10];
         let (question, offset) = Question::unserialize(&question_bytes, 4);
         assert_eq!(offset as usize, question_bytes.len());
-        assert_eq!(question.qname.value, "www.google.com");
+        assert_eq!(question.qname.to_string(), "www.google.com");
         assert_eq!(question.qtype.to_u16(), 0x4422);
         assert_eq!(question.qclass.to_u16(), 0x0110);
     }
@@ -87,7 +87,7 @@ mod tests {
     #[test]
     fn basic_serialize_test() {
         let question_bytes = [3, b'w', b'w', b'w', 6, b'g', b'o', b'o', b'g', b'l', b'e', 3, b'c', b'o', b'm', 0, 0x44, 0x44, 0x01, 0x01];
-        let question = Question{qname: Name{value: String::from("www.google.com")}, qtype: TYPE::from_u16(0x4444), qclass: CLASS::from_u16(0x0101)};
+        let question = Question{qname: Name::from("www.google.com"), qtype: TYPE::from_u16(0x4444), qclass: CLASS::from_u16(0x0101)};
         let serialized_question = question.serialize();
         assert_eq!(*serialized_question, question_bytes);
     }
