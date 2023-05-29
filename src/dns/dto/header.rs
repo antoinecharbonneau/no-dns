@@ -3,118 +3,118 @@ use core::fmt;
 #[derive(Clone)]
 
 /// # DNS Header
-/// 
+///
 /// The header of a dns packet
-/// 
+///
 /// Contains all the information about the packet.
-/// 
+///
 /// Length: 12 bytes
 pub struct Header {
     /// # ID
-    /// 
+    ///
     /// Id of the request
-    /// 
+    ///
     /// Length: 2 bytes
     pub id: u16,
 
     /// # QR (Question or Reply)
-    /// 
+    ///
     /// If the request is a question or a reply
-    /// 
+    ///
     /// Length: 1 bit
     pub qr: bool,
 
     /// # OPCODE (Operation code)
-    /// 
+    ///
     /// Operation code of the request
-    /// 
+    ///
     /// See OPCODE enum for more details
-    /// 
+    ///
     /// Length: 4 bits
     pub opcode: OPCODE,
 
     /// # AA (Authoritative answer)
-    /// 
+    ///
     /// If the response comes from an authority
-    /// 
+    ///
     /// Length: 1 bit
     pub aa: bool,
 
     /// # TC (Truncated)
-    /// 
+    ///
     /// Whether the message is truncated and should be retried
     /// over a TCP connection.
-    /// 
+    ///
     /// Length: 1 bit
     pub tc: bool,
 
     /// # RC (Recursion desired)
-    /// 
+    ///
     /// Is recursion desired
-    /// 
+    ///
     /// Length: 1 bit
-    pub rd: bool, 
+    pub rd: bool,
 
     /// # RA (Recursion available)
-    /// 
+    ///
     ///  Is recursion available
-    /// 
+    ///
     /// Length: 1 bit
     pub ra: bool,
 
     /// # Z (Future use)
-    /// 
+    ///
     /// Set to 0 by default, but followed on automatically
-    /// 
+    ///
     /// Length: 1 bit
     pub z: bool,
 
     /// # AD (Authenticated data)
-    /// 
+    ///
     /// Is it verified data (DNSSEC)
-    /// 
+    ///
     /// Length: 1 bit
     pub ad: bool,
 
     /// # CD (Checked data)
-    /// 
+    ///
     /// Is unverified data accepted (DNSSEC)
-    /// 
+    ///
     /// Length: 1 bit
     pub cd: bool,
 
     /// RCODE (Response code)
-    /// 
+    ///
     /// The response code from the server
-    /// 
+    ///
     /// Length: 4 bit
     pub rcode: RCODE,
 
     /// # QDCOUNT (Question count)
-    /// 
+    ///
     /// How many questions the packet contains
-    /// 
+    ///
     /// Length: 2 bytes
     pub qdcount: u16,
 
     /// # ANCOUNT (Answer count)
-    /// 
+    ///
     /// How many answer resource records the packet contains
-    /// 
+    ///
     /// Length: 2 bytes
     pub ancount: u16,
 
     /// # NSCOUNT (Authority count)
-    /// 
+    ///
     /// How many authority resource records the packet contains
-    /// 
+    ///
     /// Length: 2 bytes
     pub nscount: u16,
 
     /// # ARCOUNT (Additional count)
-    /// 
+    ///
     /// How many additional resource records the packet contains
-    /// 
+    ///
     /// Length: 2 bytes
     pub arcount: u16,
 }
@@ -122,30 +122,38 @@ pub struct Header {
 impl Header {
     pub fn unserialize(stream: &[u8]) -> Header {
         return Header {
-            id:         (stream[0] as u16) << 8 | stream[1] as u16,
-            qr:         stream[2] & 0x80 == 0x80,
-            opcode:     OPCODE::from_u8((stream[2] & 0x78) >> 3),
-            aa:         stream[2] & 0x04 == 0x04,
-            tc:         stream[2] & 0x02 == 0x02,
-            rd:         stream[2] & 0x01 == 0x01,
-            ra:         stream[3] & 0x80 == 0x80,
-            z:          stream[3] & 0x40 == 0x40,
-            ad:         stream[3] & 0x20 == 0x20,
-            cd:         stream[3] & 0x10 == 0x10,
-            rcode:      RCODE::from_u8(stream[3] & 0x0F),
-            qdcount:    (stream[4] as u16) << 8 | stream[5] as u16,
-            ancount:    (stream[6] as u16) << 8 | stream[7] as u16,
-            nscount:    (stream[8] as u16) << 8 | stream[9] as u16,
-            arcount:    (stream[10] as u16) << 8 | stream[11] as u16,
-        }
+            id: (stream[0] as u16) << 8 | stream[1] as u16,
+            qr: stream[2] & 0x80 == 0x80,
+            opcode: OPCODE::from_u8((stream[2] & 0x78) >> 3),
+            aa: stream[2] & 0x04 == 0x04,
+            tc: stream[2] & 0x02 == 0x02,
+            rd: stream[2] & 0x01 == 0x01,
+            ra: stream[3] & 0x80 == 0x80,
+            z: stream[3] & 0x40 == 0x40,
+            ad: stream[3] & 0x20 == 0x20,
+            cd: stream[3] & 0x10 == 0x10,
+            rcode: RCODE::from_u8(stream[3] & 0x0F),
+            qdcount: (stream[4] as u16) << 8 | stream[5] as u16,
+            ancount: (stream[6] as u16) << 8 | stream[7] as u16,
+            nscount: (stream[8] as u16) << 8 | stream[9] as u16,
+            arcount: (stream[10] as u16) << 8 | stream[11] as u16,
+        };
     }
 
     pub fn serialize(&self) -> [u8; 12] {
         let header_bytes: [u8; 12] = [
             (self.id >> 8) as u8,
             self.id as u8,
-            (self.qr as u8) << 7 | self.opcode.to_u8() << 3 | (self.aa as u8) << 2 | (self.tc as u8) << 1 | self.rd as u8,
-            (self.ra as u8) << 7 | (self.z as u8) << 6 | (self.ad as u8) << 5 | (self.cd as u8) << 4 | self.rcode.to_u8(),
+            (self.qr as u8) << 7
+                | self.opcode.to_u8() << 3
+                | (self.aa as u8) << 2
+                | (self.tc as u8) << 1
+                | self.rd as u8,
+            (self.ra as u8) << 7
+                | (self.z as u8) << 6
+                | (self.ad as u8) << 5
+                | (self.cd as u8) << 4
+                | self.rcode.to_u8(),
             (self.qdcount >> 8) as u8,
             self.qdcount as u8,
             (self.ancount >> 8) as u8,
@@ -249,7 +257,7 @@ impl OPCODE {
         let result: u8;
         match self {
             OPCODE::NotImplemented(value) => result = *value,
-            _ => result = unsafe{std::mem::transmute_copy::<OPCODE, u8>(self)},
+            _ => result = unsafe { std::mem::transmute_copy::<OPCODE, u8>(self) },
         };
 
         return result;
@@ -289,7 +297,7 @@ pub enum RCODE {
     /// Refused by server
     Refused = 5,
     /// Value could exist, but isn't implemented
-    NotImplemented(u8)
+    NotImplemented(u8),
 }
 
 impl RCODE {
@@ -302,7 +310,7 @@ impl RCODE {
             3 => result = RCODE::NXDomain,
             4 => result = RCODE::NotImp,
             5 => result = RCODE::Refused,
-            _ => result = RCODE::NotImplemented(value)
+            _ => result = RCODE::NotImplemented(value),
         }
 
         return result;
@@ -312,7 +320,7 @@ impl RCODE {
         let result: u8;
         match self {
             RCODE::NotImplemented(value) => result = *value,
-            _ => result = unsafe{std::mem::transmute_copy::<RCODE, u8>(self)},
+            _ => result = unsafe { std::mem::transmute_copy::<RCODE, u8>(self) },
         };
 
         return result;
@@ -342,11 +350,15 @@ mod tests {
 
     #[test]
     fn serialize_unserialize_test() {
-        let bytes = [0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff];
+        let bytes = [
+            0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+        ];
         let header = Header::unserialize(&bytes);
         assert_eq!(bytes, header.serialize());
 
-        let bytes = [0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa];
+        let bytes = [
+            0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa, 0xaa,
+        ];
         let header = Header::unserialize(&bytes);
         assert_eq!(bytes, header.serialize());
     }

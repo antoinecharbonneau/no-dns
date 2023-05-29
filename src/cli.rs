@@ -31,12 +31,15 @@ impl Args {
     }
 
     pub fn get_bind(&self) -> SocketAddr {
-        return self.bind.parse()
-        .expect("Unable to parse the bind socket address");
+        return self
+            .bind
+            .parse()
+            .expect("Unable to parse the bind socket address");
     }
 
     pub fn get_upstream(&self) -> SocketAddr {
-        return format!("{}:{}", self.upstream, self.upstream_port).parse()
-        .expect("Unable to parse the upstream socket address");
+        return format!("{}:{}", self.upstream, self.upstream_port)
+            .parse()
+            .expect("Unable to parse the upstream socket address");
     }
 }

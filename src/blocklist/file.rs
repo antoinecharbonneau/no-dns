@@ -1,6 +1,6 @@
-use std::fs;
-use crate::dns::dto::name::Name;
 use crate::cli::Args;
+use crate::dns::dto::name::Name;
+use std::fs;
 
 pub fn is_blocked(domain: &Name) -> bool {
     let blocklist_file: String = Args::get_params().file;
@@ -8,13 +8,11 @@ pub fn is_blocked(domain: &Name) -> bool {
     let handle = fs::read_to_string(blocklist_file);
 
     match handle {
-        Ok(blocklist) => {
-            match_blocked(&blocklist, &domain.to_string())
-        },
+        Ok(blocklist) => match_blocked(&blocklist, &domain.to_string()),
         Err(_) => {
             log::error!("File list not available, no filtering will be possible");
             return false;
-        },
+        }
     }
 }
 
@@ -25,7 +23,7 @@ fn match_blocked(blocklist: &String, domain: &str) -> bool {
         // exact match
         return d == &domain_lower
         // patern match (*.example.com)
-        || d.starts_with("*.") && domain_lower.ends_with(&d[2..d.len()])
+        || d.starts_with("*.") && domain_lower.ends_with(&d[2..d.len()]);
     });
 }
 
@@ -35,12 +33,14 @@ mod tests {
 
     #[test]
     fn test_match_blocked() {
-        let blocklist = String::from("
+        let blocklist = String::from(
+            "
         youtube.com
         google.com
         *.test.ca
         www.eXample.com
-        ");
+        ",
+        );
 
         assert!(match_blocked(&blocklist, "youtube.com"));
         assert!(!match_blocked(&blocklist, "www.google.com"));

@@ -1,9 +1,9 @@
-mod dns;
-mod cli;
 mod blocklist;
-use env_logger;
-use dns::server;
+mod cli;
+mod dns;
 use dns::cache::Cache;
+use dns::server;
+use env_logger;
 
 fn main() {
     env_logger::init();

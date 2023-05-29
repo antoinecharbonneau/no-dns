@@ -3,32 +3,32 @@ use core::fmt;
 #[derive(Clone, PartialEq, Eq, Hash)]
 #[repr(u16)]
 /// # TYPE
-/// 
+///
 /// The type of the record.
-/// 
+///
 /// ## More info
-/// 
+///
 /// The functioning of types is specified in RFC 1035
 /// and extended in many RFCs.
-/// 
+///
 /// https://en.wikipedia.org/wiki/List_of_DNS_record_types
 pub enum TYPE {
     /// # A type
-    /// 
+    ///
     /// IPv4 IP request
     A = 1,
 
     /// # AAAA type
-    /// 
+    ///
     /// IPv6 IP request
     AAAA = 28,
 
     /// # Not yet implemented
-    /// 
+    ///
     /// Used to keep compatibility with unimplemented types.
-    /// 
+    ///
     /// ## Behavior
-    /// 
+    ///
     /// Default behavior is to forward the request to an upstream
     /// server which hopefully will know how to handle the given request
     NotImplemented(u16),
@@ -54,7 +54,7 @@ impl TYPE {
             // Should actually be safe since the unsafe aspect
             // Occurs if unexpected values come in, but such unexpected
             // values are covered in the NotImplemented case.
-            _ => result = unsafe{std::mem::transmute_copy::<TYPE, u16>(self)},
+            _ => result = unsafe { std::mem::transmute_copy::<TYPE, u16>(self) },
         }
 
         return result;
@@ -77,14 +77,14 @@ impl fmt::Display for TYPE {
 #[derive(Clone, PartialEq, Eq, Hash)]
 #[repr(u16)]
 /// # CLASS
-/// 
+///
 /// The class of the record
-/// 
+///
 /// ## More info
-/// 
+///
 /// Almost always IN (Internet), but 2 more values currently exist:
 /// HS (Hesiod) and CH (Chaos).
-/// 
+///
 /// Not really used, only IN class is implemented, others are forwarded
 /// to upstream.
 pub enum CLASS {
@@ -106,12 +106,11 @@ impl CLASS {
         let result: u16;
         match self {
             CLASS::NotImplemented(value) => result = *value,
-            _ => result = unsafe{std::mem::transmute_copy::<CLASS, u16>(self)},
+            _ => result = unsafe { std::mem::transmute_copy::<CLASS, u16>(self) },
         }
         return result;
     }
 }
-
 
 impl fmt::Display for CLASS {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
