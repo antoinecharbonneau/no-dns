@@ -1,3 +1,5 @@
+use crate::dns::compression::LabelTree;
+
 use super::enums::{CLASS, TYPE};
 use super::name::Name;
 use core::fmt;
@@ -49,17 +51,14 @@ impl Question {
         );
     }
 
-    pub fn serialize(&self) -> Box<[u8]> {
-        let mut bytes: Vec<u8> = Vec::new();
-        bytes.extend_from_slice(&self.qname.serialize());
+    pub fn serialize(&self, bytes: &mut Vec<u8>, lt: &mut LabelTree) {
+        self.qname.serialize(bytes, lt);
         bytes.extend_from_slice(&[
             (self.qtype.to_u16() >> 8) as u8,
             self.qtype.to_u16() as u8,
             (self.qclass.to_u16() >> 8) as u8,
             self.qclass.to_u16() as u8,
         ]);
-
-        return bytes.into_boxed_slice();
     }
 }
 
@@ -111,7 +110,9 @@ mod tests {
             qtype: TYPE::from_u16(0x4444),
             qclass: CLASS::from_u16(0x0101),
         };
-        let serialized_question = question.serialize();
-        assert_eq!(*serialized_question, question_bytes);
+        let mut bytes: Vec<u8> = Vec::with_capacity(question_bytes.len());
+        let mut lt = LabelTree::default();
+        question.serialize(&mut bytes, &mut lt);
+        assert_eq!(bytes.as_slice(), question_bytes);
     }
 }

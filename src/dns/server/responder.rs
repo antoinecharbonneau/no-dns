@@ -108,10 +108,10 @@ fn get_cached_answer(datagram: &Datagram) -> Option<Datagram> {
                     nscount: 0,
                     arcount: 0,
                 },
-                questions: Box::new([question.clone()]),
-                answers: Box::new([answer]),
-                authorities: Box::new([]),
-                additionals: Box::new([]),
+                questions: vec![question.clone()],
+                answers: vec![answer],
+                authorities: vec![],
+                additionals: vec![],
             })
         }
         None => return None,
@@ -174,9 +174,9 @@ fn empty_answer(datagram: &Datagram) -> Datagram {
             nscount: 0,
             arcount: 0,
         },
-        questions: Box::new([datagram.questions.get(0).unwrap().clone()]),
-        answers: Box::new([]),
-        authorities: Box::new([]),
-        additionals: Box::new([]),
+        questions: vec![datagram.questions.get(0).unwrap().clone()],
+        answers: vec![],
+        authorities: vec![],
+        additionals: vec![],
     }
 }

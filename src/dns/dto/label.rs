@@ -1,7 +1,7 @@
 use core::fmt;
 use std::hash::Hash;
 
-#[derive(Clone, PartialEq, Hash, Eq)]
+#[derive(Clone, PartialEq, Hash, Eq, Ord, PartialOrd, Default)]
 pub struct Label {
     value: String,
 }
@@ -58,7 +58,7 @@ impl From<&str> for Label {
 
 impl fmt::Display for Label {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        return write!(f, "{}", self.value);
+        write!(f, "{}", self.value)
     }
 }
 

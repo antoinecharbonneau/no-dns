@@ -1,10 +1,13 @@
 use core::fmt;
 
+use crate::dns::compression::{LabelTree, ReferencedLabel};
+
 use super::label::Label;
+
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Name {
-    labels: Vec<Label>,
+    pub labels: Vec<Label>,
 }
 
 impl Name {
@@ -39,16 +42,27 @@ impl Name {
     }
 
     /// TODO: Add compression
-    pub fn serialize(&self) -> Vec<u8> {
-        let mut bytes = self
-            .labels
+    pub fn serialize(&self, bytes: &mut Vec<u8>, tree: &mut LabelTree) {
+        let reference = tree.find_best_reference(self);
+        let mut references: Vec<ReferencedLabel> = Vec::with_capacity(self.labels.len());
+        for i in 0..(self.labels.len() - reference.index) {
+            references.push(ReferencedLabel::new(self.labels[i].clone(), bytes.len() as u16));
+            bytes.append(&mut self.labels[i].serialize());
+            
+        }
+        if reference.is_valid() {
+            log::debug!("Compression hit!");
+            bytes.push(0xC0 | (reference.position >> 8) as u8);
+            bytes.push(reference.position as u8);
+        } else {
+            bytes.push(0);
+        }
+        references.append(&mut self.labels[(self.labels.len() - reference.index)..]
             .iter()
-            .map(|l| l.serialize())
-            .flatten()
-            .collect::<Vec<u8>>();
-        bytes.push(0);
-
-        return bytes;
+            .map(|l| ReferencedLabel::new(l.clone(), 0))
+            .collect::<Vec<ReferencedLabel>>()
+        );
+        tree.insert(references.into_iter().rev().collect());
     }
 }
 
@@ -138,6 +152,9 @@ mod tests {
         let expected = [
             3, b'w', b'w', b'w', 6, b'g', b'o', b'o', b'g', b'l', b'e', 3, b'c', b'o', b'm', 0,
         ];
-        assert_eq!(*name.serialize(), expected);
+        let mut bytes: Vec<u8> = Vec::with_capacity(expected.len());
+        let mut lt: LabelTree = LabelTree::default();
+        name.serialize(&mut bytes, &mut lt);
+        assert_eq!(bytes, expected);
     }
 }

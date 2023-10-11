@@ -34,12 +34,16 @@ impl Cache {
         match result {
             None => return None,
             Some((mut rr, instant)) => {
-                if rr.ttl as u64 > instant.elapsed().as_secs() {
-                    rr.ttl -= instant.elapsed().as_secs() as u32;
+                let elapsed_time = instant.elapsed().as_secs() as u32;
+                println!("{}ms since added to cache", instant.elapsed().as_millis());
+                println!("{}s since added to cache", elapsed_time);
+                if rr.ttl > elapsed_time {
+                    rr.ttl -= elapsed_time;
                     return Some(rr);
                 } else {
                     let mut hash_map_writer = binding.write().expect("Cache lock poisoned");
                     hash_map_writer.remove(&question);
+                    drop(hash_map_writer);
                     return None;
                 }
             }
@@ -123,7 +127,7 @@ mod tests {
             class: CLASS::IN,
             ttl: 1,
             rdlength: 4,
-            rdata: vec![8, 8, 8, 8],
+            rdata: vec![1, 2, 3, 4],
         };
         Cache::insert(&question, answer.clone());
 
@@ -131,7 +135,7 @@ mod tests {
         reply = Cache::get(&question);
         assert!(reply.is_some());
 
-        sleep(Duration::from_secs(1));
+        sleep(Duration::from_secs(2));
 
         reply = Cache::get(&question);
         assert!(reply.is_none());

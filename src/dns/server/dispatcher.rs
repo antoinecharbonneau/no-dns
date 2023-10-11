@@ -1,8 +1,10 @@
 use crate::cli;
-use std::net::UdpSocket;
-use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::Duration;
+use std::{
+    net::UdpSocket,
+    sync::{Arc, Mutex},
+    thread,
+    time::Duration
+};
 
 use super::responder;
 

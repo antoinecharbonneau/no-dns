@@ -1,5 +1,7 @@
 use core::fmt;
 
+use crate::dns::compression::LabelTree;
+
 use super::enums::{CLASS, TYPE};
 use super::name::Name;
 use super::question::Question;
@@ -56,9 +58,8 @@ impl ResourceRecord {
         );
     }
 
-    pub fn serialize(&self) -> Box<[u8]> {
-        let mut bytes: Vec<u8> = Vec::new();
-        bytes.extend_from_slice(&self.name.serialize());
+    pub fn serialize(&self, bytes: &mut Vec<u8>, lt: &mut LabelTree) {
+        self.name.serialize(bytes, lt);
         bytes.extend_from_slice(&[
             (self.resource_type.to_u16() >> 8) as u8,
             self.resource_type.to_u16() as u8,
@@ -72,7 +73,6 @@ impl ResourceRecord {
             self.rdlength as u8,
         ]);
         bytes.extend_from_slice(self.rdata.as_slice());
-        return bytes.into_boxed_slice();
     }
 
     pub fn get_question(&self) -> Question {
@@ -149,7 +149,9 @@ mod tests {
             rdlength: 4,
             rdata: vec![172, 217, 13, 132],
         };
-        let serialized_rr = rr.serialize();
-        assert_eq!(rr_bytes, *serialized_rr);
+        let mut bytes: Vec<u8> = Vec::with_capacity(rr_bytes.len());
+        let mut lt = LabelTree::default();
+        rr.serialize(&mut bytes, &mut lt);
+        assert_eq!(rr_bytes, bytes.as_slice());
     }
 }
