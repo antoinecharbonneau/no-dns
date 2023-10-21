@@ -1,5 +1,5 @@
 use crate::cli;
-use crate::dns::cache::Cache;
+use crate::dns::cache as Cache;
 use crate::dns::dto::{
     datagram::Datagram,
     enums::TYPE,

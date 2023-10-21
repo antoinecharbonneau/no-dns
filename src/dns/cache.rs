@@ -1,66 +1,45 @@
 use std::collections::HashMap;
 use std::sync::RwLock;
 use std::time::Instant;
+use lazy_static::lazy_static;
 
 use super::dto::question::Question;
 use super::dto::resource_record::ResourceRecord;
 
-static mut CACHE: Cache = Cache { hash_map: None };
-
-pub struct Cache {
-    hash_map: Option<RwLock<HashMap<Question, (ResourceRecord, Instant)>>>,
+lazy_static!{
+    static ref CACHE: RwLock<HashMap<Question, (ResourceRecord, Instant)>> = RwLock::new(HashMap::new());
 }
 
-impl Cache {
-    pub fn init() {
-        unsafe {
-            if CACHE.hash_map.is_none() {
-                CACHE.hash_map = Some(RwLock::new(HashMap::new()));
+pub fn get(question: &Question) -> Option<ResourceRecord> {
+    let hash_map_reader = CACHE.read().expect("Cache lock poisoned");
+    let result: Option<(ResourceRecord, Instant)> = hash_map_reader.get(&question).cloned();
+    drop(hash_map_reader);
+    match result {
+        None => return None,
+        Some((mut rr, instant)) => {
+            let elapsed_time = instant.elapsed().as_secs() as u32;
+            if elapsed_time >= rr.ttl {
+                let mut hash_map_writer = CACHE.write().expect("Cache lock poisoned");
+                hash_map_writer.remove(&question);
+                drop(hash_map_writer);
+                return None;
+            } else {
+                rr.ttl -= elapsed_time;
+                return Some(rr);
             }
         }
     }
+}
 
-    pub fn get(question: &Question) -> Option<ResourceRecord> {
-        let binding;
-        unsafe {
-            binding = CACHE
-                .hash_map
-                .as_ref()
-                .expect("Cache hashmap not initialized");
-        }
-        let hash_map_reader = binding.read().expect("Cache lock poisoned");
-        let result: Option<(ResourceRecord, Instant)> = hash_map_reader.get(&question).cloned();
-        drop(hash_map_reader);
-        match result {
-            None => return None,
-            Some((mut rr, instant)) => {
-                let elapsed_time = instant.elapsed().as_secs() as u32;
-                println!("{}ms since added to cache", instant.elapsed().as_millis());
-                println!("{}s since added to cache", elapsed_time);
-                if rr.ttl > elapsed_time {
-                    rr.ttl -= elapsed_time;
-                    return Some(rr);
-                } else {
-                    let mut hash_map_writer = binding.write().expect("Cache lock poisoned");
-                    hash_map_writer.remove(&question);
-                    drop(hash_map_writer);
-                    return None;
-                }
-            }
-        }
-    }
+pub fn insert(question: &Question, rr: ResourceRecord) {
+    let mut hash_map_writer = CACHE.write().expect("Cache lock poisoned");
+    hash_map_writer.insert(question.clone(), (rr, Instant::now()));
+}
 
-    pub fn insert(question: &Question, rr: ResourceRecord) {
-        let binding;
-        unsafe {
-            binding = CACHE
-                .hash_map
-                .as_ref()
-                .expect("Cache hashmap not initialized");
-        }
-        let mut hash_map_writer = binding.write().expect("Cache lock poisoned");
-        hash_map_writer.insert(question.clone(), (rr, Instant::now()));
-    }
+pub fn reset() {
+    log::info!("Resetting cache");
+    let mut hash = CACHE.write().expect("Cache lock poisoned");
+    *hash = HashMap::new();
 }
 
 #[cfg(test)]
@@ -73,15 +52,15 @@ mod tests {
     };
     use std::thread::sleep;
     use std::time::Duration;
-
-    fn prepare_test() {
-        Cache::init();
-    }
+    use std::sync::Mutex;
+    use std::marker::PhantomData;
+    
+    static MUTEX: Mutex<PhantomData<()>> = Mutex::new(PhantomData {});
 
     #[test]
     fn test_cache_basic() {
-        prepare_test();
-
+        let _lock = MUTEX.lock();
+        reset();
         let question = Question {
             qname: Name::from("google.com"),
             qtype: TYPE::A,
@@ -95,10 +74,10 @@ mod tests {
             rdlength: 4,
             rdata: vec![8, 8, 8, 8],
         };
-        Cache::insert(&question, answer.clone());
+        insert(&question, answer.clone());
 
         let reply: Option<ResourceRecord>;
-        reply = Cache::get(&question);
+        reply = get(&question);
         assert_eq!(reply.unwrap(), answer);
 
         let question = Question {
@@ -108,14 +87,14 @@ mod tests {
         };
 
         let reply: Option<ResourceRecord>;
-        reply = Cache::get(&question);
+        reply = get(&question);
         assert!(reply.is_none());
     }
 
     #[test]
     fn test_cache_timeout() {
-        prepare_test();
-
+        let _lock = MUTEX.lock();
+        reset();
         let question = Question {
             qname: Name::from("google.com"),
             qtype: TYPE::A,
@@ -129,15 +108,16 @@ mod tests {
             rdlength: 4,
             rdata: vec![1, 2, 3, 4],
         };
-        Cache::insert(&question, answer.clone());
+        insert(&question, answer.clone());
 
         let mut reply: Option<ResourceRecord>;
-        reply = Cache::get(&question);
+        reply = get(&question);
         assert!(reply.is_some());
 
-        sleep(Duration::from_secs(2));
+        sleep(Duration::from_millis(1010));
 
-        reply = Cache::get(&question);
+        reply = get(&question);
+        println!("{:?}", reply);
         assert!(reply.is_none());
     }
 }

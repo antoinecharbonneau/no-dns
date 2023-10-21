@@ -104,10 +104,6 @@ impl LabelTree {
         }
         best_reference
     }
-
-    pub fn new() -> Self {
-        LabelTree::default()
-    }
 }
 
 impl Default for LabelTree {
@@ -164,7 +160,7 @@ mod tests {
 
     #[test]
     fn test_tree_insertion() {
-        let mut lt: LabelTree = LabelTree::new();
+        let mut lt: LabelTree = LabelTree::default();
 
         let referenced_labels = vec![
             ReferencedLabel::new(Label::from("dev"), 13),
@@ -187,7 +183,7 @@ mod tests {
 
     #[test]
     fn test_best_reference() {
-        let mut lt: LabelTree = LabelTree::new();
+        let mut lt: LabelTree = LabelTree::default();
 
         let referenced_labels = vec![
             ReferencedLabel::new(Label::from("dev"), 13),
