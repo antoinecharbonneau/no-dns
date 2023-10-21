@@ -36,6 +36,7 @@ pub fn insert(question: &Question, rr: ResourceRecord) {
     hash_map_writer.insert(question.clone(), (rr, Instant::now()));
 }
 
+#[allow(dead_code)]
 pub fn reset() {
     log::info!("Resetting cache");
     let mut hash = CACHE.write().expect("Cache lock poisoned");

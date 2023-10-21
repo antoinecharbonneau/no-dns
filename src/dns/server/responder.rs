@@ -5,11 +5,12 @@ use crate::dns::dto::{
     enums::TYPE,
     header::{Header, RCODE},
 };
-use std::net::{SocketAddr, UdpSocket};
-use std::sync::{Arc, Mutex};
+use std::net::SocketAddr;
+use std::sync::Arc;
 use std::time::Instant;
+use tokio::net::UdpSocket;
 
-pub fn handle(buf: [u8; 1024], address: SocketAddr, socket: Arc<Mutex<UdpSocket>>) {
+pub async fn handle(buf: [u8; 1024], address: SocketAddr, socket: Arc<UdpSocket>) {
     let recv_time = Instant::now();
     let datagram = Datagram::unserialize(&buf);
     log::debug!("Received datagram from {}\n{}", address, datagram);
@@ -24,19 +25,16 @@ pub fn handle(buf: [u8; 1024], address: SocketAddr, socket: Arc<Mutex<UdpSocket>
     // TODO: Should probably match opcode first.
     match question.qtype {
         TYPE::A | TYPE::AAAA => {
-            reply = respond_question(&datagram, &address);
+            reply = respond_question(&datagram, &address).await;
         }
         _ => {
             // Forward request as normal if function type not supported
-            reply = get_forwarded_answer(&datagram).unwrap();
+            reply = get_forwarded_answer(&datagram).await.unwrap();
         }
     }
-    (*socket)
-        .lock()
-        .unwrap()
-        .send_to(&reply.serialize(), address)
+
+    socket.send_to(&reply.serialize(), address).await
         .expect(&format!("Couldn't reply to {}", &address));
-    drop(socket);
     log::debug!(
         "Sent reply to {} in {} ms",
         address,
@@ -44,7 +42,7 @@ pub fn handle(buf: [u8; 1024], address: SocketAddr, socket: Arc<Mutex<UdpSocket>
     );
 }
 
-fn respond_question(datagram: &Datagram, address: &SocketAddr) -> Datagram {
+async fn respond_question(datagram: &Datagram, address: &SocketAddr) -> Datagram {
     if let Some(blocked_answer) = get_blocked_answer(datagram) {
         log::info!(
             "Blocked {} for {}",
@@ -61,7 +59,7 @@ fn respond_question(datagram: &Datagram, address: &SocketAddr) -> Datagram {
         );
         return cached_answer;
     }
-    if let Some(forwarded_answer) = get_forwarded_answer(datagram) {
+    if let Some(forwarded_answer) = get_forwarded_answer(datagram).await {
         log::debug!(
             "Forwarded {} request for {}",
             datagram.questions.get(0).unwrap().qname,
@@ -118,23 +116,23 @@ fn get_cached_answer(datagram: &Datagram) -> Option<Datagram> {
     }
 }
 
-fn get_forwarded_answer(datagram: &Datagram) -> Option<Datagram> {
+async fn get_forwarded_answer(datagram: &Datagram) -> Option<Datagram> {
     // TODO: Add TCP capabilities logic
     let upstream_addr: SocketAddr = cli::Args::get_params().get_upstream();
     let client_socket: UdpSocket =
-        UdpSocket::bind("0.0.0.0:0").expect("Couldn't create a receiving socket");
+        UdpSocket::bind("0.0.0.0:0").await.expect("Couldn't create a receiving socket");
     client_socket
-        .connect(upstream_addr)
+        .connect(upstream_addr).await
         .expect(&format!("Couldn't connect to {}", upstream_addr));
     client_socket
-        .send(&datagram.serialize())
+        .send(&datagram.serialize()).await
         .expect(&format!("Couldn't send message to {}", upstream_addr));
     let send_time = Instant::now();
     log::debug!("Forwarded request to {}", upstream_addr);
 
     let mut buf = [0; 1024];
     client_socket
-        .recv(&mut buf)
+        .recv(&mut buf).await
         .expect(&format!("Couldn't receive message from {}", upstream_addr));
 
     let receiving_delay = send_time.elapsed().as_millis();

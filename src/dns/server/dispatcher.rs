@@ -1,36 +1,28 @@
 use crate::cli;
-use std::{
-    net::UdpSocket,
-    sync::{Arc, Mutex},
-    thread,
-    time::Duration
-};
+use tokio::net::UdpSocket;
+use std::sync::Arc;
 
 use super::responder;
 
-pub fn start() {
+pub async fn start() {
     // TODO: Add TCP implementation.
     let addr = cli::Args::get_params().get_bind();
-    let socket: UdpSocket = UdpSocket::bind(addr.to_string())
+    let socket: UdpSocket = UdpSocket::bind(addr.to_string()).await
         .expect(&format!("couldn't bind to address: {}", addr.to_string()));
-    socket
-        .set_read_timeout(Some(Duration::from_micros(1)))
-        .unwrap();
-    let arc_socket = Arc::new(Mutex::new(socket));
+    let arc_socket = Arc::new(socket);
 
     // Start on a thread to add tcp implementation?
-    dispatch_udp_requests(arc_socket);
+    dispatch_udp_requests(arc_socket).await;
 }
 
-fn dispatch_udp_requests(arc_socket: Arc<Mutex<UdpSocket>>) {
+async fn dispatch_udp_requests(arc_socket: Arc<UdpSocket>) {
     loop {
-        let mut buf = [0; 1024];
+        let mut buf: [u8; 1024] = [0; 1024];
         let arc_socket_clone = Arc::clone(&arc_socket);
 
-        let result = (*arc_socket_clone.lock().unwrap()).recv_from(&mut buf);
-        drop(arc_socket_clone);
+        let result = (*arc_socket_clone).recv_from(&mut buf);
 
-        match result {
+        match result.await {
             Ok((bytes, client_address)) => {
                 log::info!(
                     "Received connection from {} of length {}",
@@ -42,8 +34,8 @@ fn dispatch_udp_requests(arc_socket: Arc<Mutex<UdpSocket>>) {
                     client_address
                 );
                 let arc_socket_clone = Arc::clone(&arc_socket);
-                thread::spawn(move || {
-                    responder::handle(buf, client_address, arc_socket_clone);
+                tokio::spawn(async move {
+                    responder::handle(buf, client_address, arc_socket_clone).await;
                 });
             }
             Err(e) => {
@@ -53,6 +45,5 @@ fn dispatch_udp_requests(arc_socket: Arc<Mutex<UdpSocket>>) {
                 }
             }
         }
-        thread::sleep(Duration::from_nanos(100));
     }
 }
