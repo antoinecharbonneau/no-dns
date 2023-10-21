@@ -34,8 +34,8 @@ To block every subdomain to a domain, use an asterisk :
 
 ## Planned features
 
+* Migrating to tokio runtime
 * More flexible blocklist (i.e. blocking between time periods, blocking for specific IPs)
-* Add domain compression on serializing
 * TCP fallback
 * Better logging
 * Metrics (requests rate, cache hit, request blocked)
