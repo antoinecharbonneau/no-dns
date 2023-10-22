@@ -5,7 +5,7 @@ use crate::dns::dto::{
     enums::TYPE,
     header::RCODE,
 };
-use std::net::SocketAddr;
+use std::net::{SocketAddr, Ipv4Addr};
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::net::UdpSocket;
@@ -13,7 +13,7 @@ use tokio::net::UdpSocket;
 pub async fn handle(buf: [u8; 1024], address: SocketAddr, socket: Arc<UdpSocket>) {
     let recv_time = Instant::now();
     let datagram = Datagram::unserialize(&buf);
-    log::debug!("Received datagram from {}\n{}", address, datagram);
+    log::debug!("Rcvd pkt from {}\n{}", address, datagram);
 
     // TODO: Handle questions async?
     // or maybe prepare all questions asynchronously, then
@@ -33,13 +33,21 @@ pub async fn handle(buf: [u8; 1024], address: SocketAddr, socket: Arc<UdpSocket>
         }
     }
 
-    socket.send_to(&reply.serialize(), address).await
-        .expect(&format!("Couldn't reply to {}", &address));
-    log::debug!(
-        "Sent reply to {} in {} ms",
-        address,
-        recv_time.elapsed().as_millis()
-    );
+    match socket.send_to(&reply.serialize(), address).await {
+        Ok(_) => {
+            log::debug!(
+                "Sent reply to {} in {} ms",
+                address,
+                recv_time.elapsed().as_millis()
+            )
+        },
+        Err(_) => {
+            log::warn!(
+                "Couldn't reply to {}",
+                address
+            )
+        }
+    }
 }
 
 async fn respond_question(datagram: &Datagram, address: &SocketAddr) -> Datagram {
@@ -107,11 +115,13 @@ fn get_cached_answer(datagram: &Datagram) -> Option<Datagram> {
     }
 }
 
+static DEFAULT_SOCKET: SocketAddr = SocketAddr::new(std::net::IpAddr::V4(Ipv4Addr::new(0, 0, 0, 0)), 0);
+
 async fn get_forwarded_answer(datagram: &Datagram) -> Option<Datagram> {
     // TODO: Add TCP capabilities logic
     let upstream_addr: SocketAddr = cli::Args::get_params().get_upstream();
     let client_socket: UdpSocket =
-        UdpSocket::bind("0.0.0.0:0").await.expect("Couldn't create a receiving socket");
+        UdpSocket::bind(DEFAULT_SOCKET).await.expect("Couldn't create a receiving socket");
     client_socket
         .connect(upstream_addr).await
         .expect(&format!("Couldn't connect to {}", upstream_addr));
