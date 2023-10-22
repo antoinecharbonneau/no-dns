@@ -93,7 +93,7 @@ mod tests {
     fn basic_serialize_test() {
         let bytes = [3, b'w', b'w', b'w'];
         let mut result = Vec::new();
-        Label::from("www").serialize(result);
+        Label::from("www").serialize(&mut result);
         assert_eq!(result, bytes);
     }
 }

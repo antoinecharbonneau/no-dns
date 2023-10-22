@@ -42,7 +42,6 @@ impl Name {
         return Ok((Name { labels }, i + 1));
     }
 
-    /// TODO: Add compression
     pub fn serialize(&self, bytes: &mut Vec<u8>, tree: &mut LabelTree) {
         let reference = tree.find_best_reference(self);
         let mut references: Vec<ReferencedLabel> = Vec::with_capacity(self.labels.len());
@@ -51,7 +50,6 @@ impl Name {
             self.labels[i].serialize(bytes);
         }
         if reference.is_valid() {
-            log::debug!("Compression hit!");
             bytes.push(0xC0 | (reference.position >> 8) as u8);
             bytes.push(reference.position as u8);
         } else {
@@ -62,7 +60,7 @@ impl Name {
             .map(|l| ReferencedLabel::new(l.clone(), 0))
             .collect::<Vec<ReferencedLabel>>()
         );
-        tree.insert(references.into_iter().rev().collect());
+        tree.insert(references);
     }
 }
 

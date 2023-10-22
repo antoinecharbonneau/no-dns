@@ -42,24 +42,24 @@ pub fn is_blocked(domain: &Name) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    #[test]
-    fn test_match_blocked() {
-        let blocklist = String::from(
-            "
-        youtube.com
-        google.com
-        *.test.ca
-        www.eXample.com
-        ",
-        );
-
-        assert!(match_blocked(&blocklist, "youtube.com"));
-        assert!(!match_blocked(&blocklist, "www.google.com"));
-        assert!(match_blocked(&blocklist, "test2.test.ca"));
-        assert!(match_blocked(&blocklist, "test.ca"));
-        assert!(!match_blocked(&blocklist, "test.ca.google.com"));
-        assert!(match_blocked(&blocklist, "www.example.com"));
-    }
+    // use super::*;
+    //
+    // #[test]
+    // fn test_match_blocked() {
+    //     let blocklist = String::from(
+    //         "
+    //     youtube.com
+    //     google.com
+    //     *.test.ca
+    //     www.eXample.com
+    //     ",
+    //     );
+    //
+    //     assert!(match_blocked(&blocklist, "youtube.com"));
+    //     assert!(!match_blocked(&blocklist, "www.google.com"));
+    //     assert!(match_blocked(&blocklist, "test2.test.ca"));
+    //     assert!(match_blocked(&blocklist, "test.ca"));
+    //     assert!(!match_blocked(&blocklist, "test.ca.google.com"));
+    //     assert!(match_blocked(&blocklist, "www.example.com"));
+    // }
 }

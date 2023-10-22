@@ -34,25 +34,35 @@ impl LabelTree {
     ///
     /// * `referenced_labels` - A vector of ReferencedLabel that is in reversed label order
     ///     i.e. www.antoinec.dev would have the labels ordered as [dev, antoinec, www].
-    pub fn insert(&mut self, referenced_labels: Vec<ReferencedLabel>) {
+    pub fn insert(&mut self, mut referenced_labels: Vec<ReferencedLabel>) {
         let mut node: usize = Self::ROOT_NODE;
-        let mut current_index: usize = 0;
         
         if referenced_labels.len() == 0 {
             return;
         }
 
         loop {
-            match self.find_child(node, &referenced_labels[current_index].label) {
+            let current_reference: ReferencedLabel = referenced_labels.pop().unwrap();
+            match self.find_child(node, &current_reference.label) {
                 Some(c) => {
                     node = c;
-                    current_index += 1;
                 },
                 None => {
-                    for rl in referenced_labels[current_index..].iter() {
+                    self.elements.push(
+                        TreeElement {
+                            referenced_label: current_reference,
+                            children: Vec::with_capacity(4),
+                        }
+                    );
+
+                    let current_length = self.elements.len();
+                    self.elements[node].children.push(current_length - 1);
+                    node = self.elements.len() - 1;
+
+                    while referenced_labels.len() > 0 {
                         self.elements.push(
                             TreeElement {
-                                referenced_label: rl.clone(),
+                                referenced_label: referenced_labels.pop().unwrap(),
                                 children: Vec::with_capacity(4),
                             }
                         );
@@ -66,7 +76,7 @@ impl LabelTree {
                 }
             }
 
-            if current_index >= referenced_labels.len() {
+            if referenced_labels.len() == 0 {
                 break;
             }
         }
@@ -163,15 +173,15 @@ mod tests {
         let mut lt: LabelTree = LabelTree::default();
 
         let referenced_labels = vec![
-            ReferencedLabel::new(Label::from("dev"), 13),
-            ReferencedLabel::new(Label::from("antoinec"), 4),
             ReferencedLabel::new(Label::from("www"), 0),
+            ReferencedLabel::new(Label::from("antoinec"), 4),
+            ReferencedLabel::new(Label::from("dev"), 13),
         ];
         lt.insert(referenced_labels);
         let referenced_labels = vec![
-            ReferencedLabel::new(Label::from("dev"), 13),
-            ReferencedLabel::new(Label::from("charbonneau"), 4),
             ReferencedLabel::new(Label::from("www"), 0),
+            ReferencedLabel::new(Label::from("charbonneau"), 4),
+            ReferencedLabel::new(Label::from("dev"), 13),
         ];
         lt.insert(referenced_labels);
 
@@ -186,15 +196,15 @@ mod tests {
         let mut lt: LabelTree = LabelTree::default();
 
         let referenced_labels = vec![
-            ReferencedLabel::new(Label::from("dev"), 13),
-            ReferencedLabel::new(Label::from("antoinec"), 4),
             ReferencedLabel::new(Label::from("www"), 0),
+            ReferencedLabel::new(Label::from("antoinec"), 4),
+            ReferencedLabel::new(Label::from("dev"), 13),
         ];
         lt.insert(referenced_labels);
         let referenced_labels = vec![
-            ReferencedLabel::new(Label::from("dev"), 13),
-            ReferencedLabel::new(Label::from("charbonneau"), 4),
             ReferencedLabel::new(Label::from("www"), 0),
+            ReferencedLabel::new(Label::from("charbonneau"), 4),
+            ReferencedLabel::new(Label::from("dev"), 13),
         ];
         lt.insert(referenced_labels);
 
