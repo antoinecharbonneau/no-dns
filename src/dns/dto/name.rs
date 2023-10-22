@@ -55,12 +55,25 @@ impl Name {
         } else {
             bytes.push(0);
         }
-        references.append(&mut self.labels[(self.labels.len() - reference.index)..]
+        self.labels[(self.labels.len() - reference.index)..]
             .iter()
-            .map(|l| ReferencedLabel::new(l.clone(), 0))
-            .collect::<Vec<ReferencedLabel>>()
-        );
+            .for_each(|l| references.push(ReferencedLabel::new(l.clone(), 0)));
         tree.insert(references);
+    }
+
+    pub fn get_string(&self) -> String {
+        let mut s: Vec<u8> = Vec::with_capacity(16);
+        if self.labels.len() >= 1 {
+            s = self.labels[0].value.clone().into();
+            if self.labels.len() > 1 {
+                for label in self.labels[1..].iter() {
+                    s.push(b'.');
+                    let _ = s.write_all(label.value.as_bytes());
+                }
+            }
+        } 
+
+        String::from_utf8(s).unwrap()
     }
 }
 

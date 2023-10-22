@@ -37,7 +37,7 @@ where P: AsRef<Path>, {
 }
 
 pub fn is_blocked(domain: &Name) -> bool {
-    BLOCKLIST.get(&domain.to_string()).is_some()
+    BLOCKLIST.get(&domain.get_string()).is_some()
 }
 
 #[cfg(test)]
