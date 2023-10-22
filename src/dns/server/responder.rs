@@ -3,7 +3,7 @@ use crate::dns::cache as Cache;
 use crate::dns::dto::{
     datagram::Datagram,
     enums::TYPE,
-    header::{Header, RCODE},
+    header::RCODE,
 };
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -23,7 +23,7 @@ pub async fn handle(buf: [u8; 1024], address: SocketAddr, socket: Arc<UdpSocket>
     let reply: Datagram;
 
     // TODO: Should probably match opcode first.
-    match question.qtype {
+    match question.get_type() {
         TYPE::A | TYPE::AAAA => {
             reply = respond_question(&datagram, &address).await;
         }
@@ -84,28 +84,19 @@ fn get_blocked_answer(datagram: &Datagram) -> Option<Datagram> {
 
 fn get_cached_answer(datagram: &Datagram) -> Option<Datagram> {
     let question = &datagram.questions[0];
-    let header = &datagram.header;
+    let mut header = datagram.header.clone();
+    header.set_question(false);
+    header.set_recursion_available(true);
+    header.set_authoritative_answer(false);
+    header.set_truncated(false);
+    header.set_answer_count(1);
+    header.set_authority_count(0);
+    header.set_additional_count(0);
     let cache_result = Cache::get(question);
     match cache_result {
         Some(answer) => {
             return Some(Datagram {
-                header: Header {
-                    id: header.id,
-                    qr: true,
-                    opcode: header.opcode.clone(),
-                    aa: false,
-                    tc: false,
-                    rd: header.rd,
-                    ra: true,
-                    z: false,
-                    ad: header.ad,
-                    cd: header.cd,
-                    rcode: RCODE::NoError,
-                    qdcount: 1,
-                    ancount: 1,
-                    nscount: 0,
-                    arcount: 0,
-                },
+                header,
                 questions: vec![question.clone()],
                 answers: vec![answer],
                 authorities: vec![],
@@ -125,7 +116,7 @@ async fn get_forwarded_answer(datagram: &Datagram) -> Option<Datagram> {
         .connect(upstream_addr).await
         .expect(&format!("Couldn't connect to {}", upstream_addr));
     client_socket
-        .send(&datagram.serialize()).await
+        .send(&datagram.clone().serialize()).await
         .expect(&format!("Couldn't send message to {}", upstream_addr));
     let send_time = Instant::now();
     log::debug!("Forwarded request to {}", upstream_addr);
@@ -138,7 +129,7 @@ async fn get_forwarded_answer(datagram: &Datagram) -> Option<Datagram> {
     let receiving_delay = send_time.elapsed().as_millis();
     let reply = Datagram::unserialize(&buf);
 
-    for i in 0..reply.header.ancount as usize {
+    for i in 0..reply.header.answer_count() as usize {
         let answer = reply.answers.get(i)?;
 
         Cache::insert(&answer.get_question(), answer.clone());
@@ -154,25 +145,18 @@ async fn get_forwarded_answer(datagram: &Datagram) -> Option<Datagram> {
 }
 
 fn empty_answer(datagram: &Datagram) -> Datagram {
+    let mut header = datagram.header.clone();
+    header.set_question(false);
+    header.set_authoritative_answer(false);
+    header.set_truncated(false);
+    header.set_recursion_available(true);
+    header.set_rcode(RCODE::NXDomain);
+    header.set_answer_count(0);
+    header.set_authority_count(0);
+    header.set_additional_count(0);
     Datagram {
-        header: Header {
-            id: datagram.header.id,
-            qr: true,
-            opcode: datagram.header.opcode.clone(),
-            aa: false,
-            tc: false,
-            rd: datagram.header.rd,
-            ra: true,
-            z: false,
-            ad: datagram.header.ad,
-            cd: datagram.header.cd,
-            rcode: RCODE::NXDomain,
-            qdcount: 1,
-            ancount: 0,
-            nscount: 0,
-            arcount: 0,
-        },
-        questions: vec![datagram.questions.get(0).unwrap().clone()],
+        header,
+        questions: vec![datagram.questions[0].clone()],
         answers: vec![],
         authorities: vec![],
         additionals: vec![],

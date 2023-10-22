@@ -1,169 +1,188 @@
 use core::fmt;
+use rand::Rng;
 
 #[derive(Clone)]
 
-/// # DNS Header
-///
-/// The header of a dns packet
-///
-/// Contains all the information about the packet.
-///
-/// Length: 12 bytes
 pub struct Header {
-    /// # ID
-    ///
-    /// Id of the request
-    ///
-    /// Length: 2 bytes
-    pub id: u16,
-
-    /// # QR (Question or Reply)
-    ///
-    /// If the request is a question or a reply
-    ///
-    /// Length: 1 bit
-    pub qr: bool,
-
-    /// # OPCODE (Operation code)
-    ///
-    /// Operation code of the request
-    ///
-    /// See OPCODE enum for more details
-    ///
-    /// Length: 4 bits
-    pub opcode: OPCODE,
-
-    /// # AA (Authoritative answer)
-    ///
-    /// If the response comes from an authority
-    ///
-    /// Length: 1 bit
-    pub aa: bool,
-
-    /// # TC (Truncated)
-    ///
-    /// Whether the message is truncated and should be retried
-    /// over a TCP connection.
-    ///
-    /// Length: 1 bit
-    pub tc: bool,
-
-    /// # RC (Recursion desired)
-    ///
-    /// Is recursion desired
-    ///
-    /// Length: 1 bit
-    pub rd: bool,
-
-    /// # RA (Recursion available)
-    ///
-    ///  Is recursion available
-    ///
-    /// Length: 1 bit
-    pub ra: bool,
-
-    /// # Z (Future use)
-    ///
-    /// Set to 0 by default, but followed on automatically
-    ///
-    /// Length: 1 bit
-    pub z: bool,
-
-    /// # AD (Authenticated data)
-    ///
-    /// Is it verified data (DNSSEC)
-    ///
-    /// Length: 1 bit
-    pub ad: bool,
-
-    /// # CD (Checked data)
-    ///
-    /// Is unverified data accepted (DNSSEC)
-    ///
-    /// Length: 1 bit
-    pub cd: bool,
-
-    /// RCODE (Response code)
-    ///
-    /// The response code from the server
-    ///
-    /// Length: 4 bit
-    pub rcode: RCODE,
-
-    /// # QDCOUNT (Question count)
-    ///
-    /// How many questions the packet contains
-    ///
-    /// Length: 2 bytes
-    pub qdcount: u16,
-
-    /// # ANCOUNT (Answer count)
-    ///
-    /// How many answer resource records the packet contains
-    ///
-    /// Length: 2 bytes
-    pub ancount: u16,
-
-    /// # NSCOUNT (Authority count)
-    ///
-    /// How many authority resource records the packet contains
-    ///
-    /// Length: 2 bytes
-    pub nscount: u16,
-
-    /// # ARCOUNT (Additional count)
-    ///
-    /// How many additional resource records the packet contains
-    ///
-    /// Length: 2 bytes
-    pub arcount: u16,
+    content: [u8; 12],
 }
 
 impl Header {
-    pub fn unserialize(stream: &[u8]) -> Header {
-        return Header {
-            id: (stream[0] as u16) << 8 | stream[1] as u16,
-            qr: stream[2] & 0x80 == 0x80,
-            opcode: OPCODE::from_u8((stream[2] & 0x78) >> 3),
-            aa: stream[2] & 0x04 == 0x04,
-            tc: stream[2] & 0x02 == 0x02,
-            rd: stream[2] & 0x01 == 0x01,
-            ra: stream[3] & 0x80 == 0x80,
-            z: stream[3] & 0x40 == 0x40,
-            ad: stream[3] & 0x20 == 0x20,
-            cd: stream[3] & 0x10 == 0x10,
-            rcode: RCODE::from_u8(stream[3] & 0x0F),
-            qdcount: (stream[4] as u16) << 8 | stream[5] as u16,
-            ancount: (stream[6] as u16) << 8 | stream[7] as u16,
-            nscount: (stream[8] as u16) << 8 | stream[9] as u16,
-            arcount: (stream[10] as u16) << 8 | stream[11] as u16,
-        };
+    pub fn get_id(&self) -> u16 {
+        (self.content[0] as u16) << 8 | self.content[1] as u16
     }
 
-    pub fn serialize(&self) -> [u8; 12] {
-        let header_bytes: [u8; 12] = [
-            (self.id >> 8) as u8,
-            self.id as u8,
-            (self.qr as u8) << 7
-                | self.opcode.to_u8() << 3
-                | (self.aa as u8) << 2
-                | (self.tc as u8) << 1
-                | self.rd as u8,
-            (self.ra as u8) << 7
-                | (self.z as u8) << 6
-                | (self.ad as u8) << 5
-                | (self.cd as u8) << 4
-                | self.rcode.to_u8(),
-            (self.qdcount >> 8) as u8,
-            self.qdcount as u8,
-            (self.ancount >> 8) as u8,
-            self.ancount as u8,
-            (self.nscount >> 8) as u8,
-            self.nscount as u8,
-            (self.arcount >> 8) as u8,
-            self.arcount as u8,
-        ];
-        header_bytes
+    pub fn set_id(&mut self, id: u16) {
+        self.content[0..2].copy_from_slice(&id.to_be_bytes()); 
+    }
+
+    pub fn is_question(&self) -> bool {
+        self.content[2] & 0x80 == 0x00
+    }
+    
+    pub fn set_question(&mut self, is_question: bool) {
+        self.content[2] &= 0x7F;
+        self.content[2] |= (!is_question as u8) << 7;
+    }
+
+    pub fn get_opcode(&self) -> OPCODE {
+        OPCODE::from_u8((self.content[2] & 0x78) >> 3)
+    }
+
+    pub fn set_opcode(&mut self, opcode: OPCODE) {
+        self.content[2] &= 0x87;
+        self.content[2] |= opcode.to_u8() << 3;
+    }
+
+    pub fn is_authoritative_answer(&self) -> bool {
+        self.content[2] & 0x04 == 0x04
+    }
+
+    pub fn set_authoritative_answer(&mut self, is_authoritative_answer: bool) {
+        self.content[2] &= 0xFB;
+        self.content[2] |= (is_authoritative_answer as u8) << 2;
+    }
+    
+    pub fn is_truncated(&self) -> bool {
+        self.content[2] & 0x02 == 0x02
+    }
+
+    pub fn set_truncated(&mut self, is_truncated: bool) {
+        self.content[2] &= 0xFD;
+        self.content[2] |= (is_truncated as u8) << 1;
+    }
+
+    pub fn is_recursion_desired(&self) -> bool {
+        self.content[2] & 0x01 == 0x01
+    }
+
+    pub fn set_recursion_desired(&mut self, is_recursion_desired: bool) {
+        self.content[2] &= 0xFE;
+        self.content[2] |= is_recursion_desired as u8;
+    }
+
+    pub fn is_recursion_available(&self) -> bool {
+        self.content[3] & 0x80 == 0x80
+    }
+
+    pub fn set_recursion_available(&mut self, is_recursion_available: bool) {
+        self.content[3] &= 0x7F;
+        self.content[3] |= (is_recursion_available as u8) << 7;
+    }
+
+    pub fn is_authenticated_data(&self) -> bool {
+        self.content[3] & 0x20 == 0x20
+    }
+
+    pub fn set_authenticated_data(&mut self, is_authenticated_data: bool) {
+        self.content[3] &= 0xBF;
+        self.content[3] |= (is_authenticated_data as u8) << 6;
+    }
+
+    pub fn is_checked_data(&self) -> bool {
+        self.content[3] & 0x10 == 0x10
+    }
+
+    pub fn set_checked_data(&mut self, is_checked_data: bool) {
+        self.content[3] &= 0xEF;
+        self.content[3] |= (is_checked_data as u8) << 5;
+    }
+
+    pub fn get_rcode(&self) -> RCODE {
+        RCODE::from_u8(self.content[3] & 0x0f)
+    }
+    
+    pub fn set_rcode(&mut self, rcode: RCODE) {
+        self.content[3] &= 0xF0;
+        self.content[3] |= rcode.to_u8();
+    }
+
+    pub fn question_count(&self) -> u16 {
+        (self.content[4] as u16) << 8 | self.content[5] as u16
+    }
+
+    pub fn set_question_count(&mut self, count: u16) {
+        self.content[4..6].copy_from_slice(&count.to_be_bytes());
+    }
+
+    pub fn answer_count(&self) -> u16 {
+        (self.content[6] as u16) << 8 | self.content[7] as u16
+    }
+
+    pub fn set_answer_count(&mut self, count: u16) {
+        self.content[6..8].copy_from_slice(&count.to_be_bytes());
+    }
+
+    pub fn authority_count(&self) -> u16 {
+        (self.content[8] as u16) << 8 | self.content[9] as u16
+    }
+
+    pub fn set_authority_count(&mut self, count: u16) {
+        self.content[8..10].copy_from_slice(&count.to_be_bytes());
+    }
+
+    pub fn additional_count(&self) -> u16 {
+        (self.content[10] as u16) << 8 | self.content[11] as u16
+    }
+
+    pub fn set_additional_count(&mut self, count: u16) {
+        self.content[10..12].copy_from_slice(&count.to_be_bytes());
+    }
+
+    fn get_z(&self) -> bool {
+        self.content[2] & 0x40 == 0x40
+    }
+
+    pub fn unserialize(stream: &[u8]) -> Self {
+        let mut content: [u8; 12] = [0; 12];
+        content.copy_from_slice(&stream[0..12]);
+        Self {
+            content
+        }
+    }
+
+    pub fn serialize(self) -> [u8; 12] {
+        self.content
+    }
+
+    #[inline]
+    fn generate_id() -> u16 {
+        rand::thread_rng().gen()
+    }
+
+    /// Generate a question header with sane default values
+    /// id: random
+    /// qr: question
+    pub fn new_question() -> Self {
+        let mut header = Self { 
+            content: [
+                0,      0,
+                0x01,   0,
+                0,      1,
+                0,      0,
+                0,      0,
+                0,      0,
+            ],
+        };
+        header.set_id(Self::generate_id());
+
+        header
+    }
+
+    pub fn new_reply() -> Self {
+        let mut header = Self { 
+            content: [
+                0,      0,
+                0x81,   0,
+                0,      1,
+                0,      1,
+                0,      0,
+                0,      0,
+            ],
+        };
+        header.set_id(Self::generate_id());
+
+        header
     }
 
     pub const LENGTH: u16 = 0x0C;
@@ -173,40 +192,22 @@ impl fmt::Display for Header {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f,
             "ID: {}\nQR: {}\nOPCODE: {}\nAA: {}\nTC: {}\nRD: {}\nRA: {}\nZ: {}\nAD: {}\nCD: {}\nRCODE: {}\nQDCOUNT: {}\nANCOUNT: {}\nNSCOUNT: {}\nARCOUNT: {}\n",
-            self.id,
-            self.qr,
-            self.opcode,
-            self.aa,
-            self.tc,
-            self.rd,
-            self.ra,
-            self.z,
-            self.ad,
-            self.cd,
-            self.rcode,
-            self.qdcount,
-            self.ancount,
-            self.nscount,
-            self.arcount
+            self.get_id(),
+            self.is_question(),
+            self.get_opcode(),
+            self.is_authoritative_answer(),
+            self.is_truncated(),
+            self.is_recursion_desired(),
+            self.is_recursion_available(),
+            self.get_z(),
+            self.is_authenticated_data(),
+            self.is_checked_data(),
+            self.get_rcode(),
+            self.question_count(),
+            self.answer_count(),
+            self.authority_count(),
+            self.additional_count()
         )
-        // let mut output = String::from("");
-        // output.push_str(&format!("ID: {}\n", self.id));
-        // output.push_str(&format!("QR: {}\n", self.qr));
-        // output.push_str(&format!("OPCODE: {}\n", self.opcode.to_string()));
-        // output.push_str(&format!("AA: {}\n", self.aa));
-        // output.push_str(&format!("TC: {}\n", self.tc));
-        // output.push_str(&format!("RD: {}\n", self.rd));
-        // output.push_str(&format!("RA: {}\n", self.ra));
-        // output.push_str(&format!("Z: {}\n", self.z));
-        // output.push_str(&format!("AD: {}\n", self.ad));
-        // output.push_str(&format!("CD: {}\n", self.cd));
-        // output.push_str(&format!("RCODE: {}\n", self.rcode.to_string()));
-        // output.push_str(&format!("QDCOUNT: {}\n", self.qdcount));
-        // output.push_str(&format!("ANCOUNT: {}\n", self.ancount));
-        // output.push_str(&format!("NSCOUNT: {}\n", self.nscount));
-        // output.push_str(&format!("ARCOUNT: {}\n", self.arcount));
-
-        // output
     }
 }
 

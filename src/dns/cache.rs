@@ -18,13 +18,14 @@ pub fn get(question: &Question) -> Option<ResourceRecord> {
         None => return None,
         Some((mut rr, instant)) => {
             let elapsed_time = instant.elapsed().as_secs() as u32;
-            if elapsed_time >= rr.ttl {
+            let ttl = rr.get_ttl();
+            if elapsed_time >= ttl {
                 let mut hash_map_writer = CACHE.write().expect("Cache lock poisoned");
                 hash_map_writer.remove(&question);
                 drop(hash_map_writer);
                 return None;
             } else {
-                rr.ttl -= elapsed_time;
+                rr.set_ttl(ttl - elapsed_time);
                 return Some(rr);
             }
         }
@@ -47,10 +48,9 @@ pub fn reset() {
 mod tests {
 
     use super::*;
-    use crate::dns::dto::{
-        enums::{CLASS, TYPE},
+    use crate::dns::{dto::{
         name::Name,
-    };
+    }, compression::LabelTree};
     use std::thread::sleep;
     use std::time::Duration;
     use std::sync::Mutex;
@@ -64,17 +64,14 @@ mod tests {
         reset();
         let question = Question {
             qname: Name::from("google.com"),
-            qtype: TYPE::A,
-            qclass: CLASS::IN,
+            content: [0, 1, 0, 1],
         };
-        let answer = ResourceRecord {
-            name: Name::from("google.com"),
-            resource_type: TYPE::A,
-            class: CLASS::IN,
-            ttl: 10,
-            rdlength: 4,
-            rdata: vec![8, 8, 8, 8],
-        };
+        let mut answer_byte = Vec::new();
+        let mut tree = LabelTree::default();
+        let name = Name::from("google.com");
+        name.serialize(&mut answer_byte, &mut tree);
+        answer_byte.extend_from_slice(&[0, 1, 0, 1, 0, 0, 0, 10, 0, 4, 8, 8, 8, 8]);
+        let (answer, _) = ResourceRecord::unserialize(&answer_byte, 0);
         insert(&question, answer.clone());
 
         let reply: Option<ResourceRecord>;
@@ -83,8 +80,7 @@ mod tests {
 
         let question = Question {
             qname: Name::from("bing.com"),
-            qtype: TYPE::A,
-            qclass: CLASS::IN,
+            content: [0, 1, 0, 1],
         };
 
         let reply: Option<ResourceRecord>;
@@ -98,19 +94,15 @@ mod tests {
         reset();
         let question = Question {
             qname: Name::from("google.com"),
-            qtype: TYPE::A,
-            qclass: CLASS::IN,
+            content: [0, 1, 0, 1],
         };
-        let answer = ResourceRecord {
-            name: Name::from("google.com"),
-            resource_type: TYPE::A,
-            class: CLASS::IN,
-            ttl: 1,
-            rdlength: 4,
-            rdata: vec![1, 2, 3, 4],
-        };
+        let mut answer_byte = Vec::new();
+        let mut tree = LabelTree::default();
+        let name = Name::from("google.com");
+        name.serialize(&mut answer_byte, &mut tree);
+        answer_byte.extend_from_slice(&[0, 1, 0, 1, 0, 0, 0, 1, 0, 4, 8, 8, 8, 8]);
+        let (answer, _) = ResourceRecord::unserialize(&answer_byte, 0);
         insert(&question, answer.clone());
-
         let mut reply: Option<ResourceRecord>;
         reply = get(&question);
         assert!(reply.is_some());

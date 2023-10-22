@@ -6,6 +6,7 @@ use super::header::Header;
 use super::question::Question;
 use super::resource_record::ResourceRecord;
 
+#[derive(Clone)]
 /// # DNS datagram
 ///
 /// Contains a complete DNS request.
@@ -34,25 +35,25 @@ impl Datagram {
         let header = Header::unserialize(stream);
         offset += Header::LENGTH;
         let mut questions: Vec<Question> = Vec::new();
-        for _ in 0..header.qdcount {
+        for _ in 0..header.question_count() {
             let question: Question;
             (question, offset) = Question::unserialize(stream, offset);
             questions.push(question);
         }
         let mut answers: Vec<ResourceRecord> = Vec::new();
-        for _ in 0..header.ancount {
+        for _ in 0..header.answer_count() {
             let answer: ResourceRecord;
             (answer, offset) = ResourceRecord::unserialize(stream, offset);
             answers.push(answer);
         }
         let mut authorities: Vec<ResourceRecord> = Vec::new();
-        for _ in 0..header.nscount {
+        for _ in 0..header.authority_count() {
             let authority: ResourceRecord;
             (authority, offset) = ResourceRecord::unserialize(stream, offset);
             authorities.push(authority);
         }
         let mut additionals: Vec<ResourceRecord> = Vec::new();
-        for _ in 0..header.arcount {
+        for _ in 0..header.additional_count() {
             let additional: ResourceRecord;
             (additional, offset) = ResourceRecord::unserialize(stream, offset);
             additionals.push(additional);
@@ -67,40 +68,45 @@ impl Datagram {
         };
     }
 
-    pub fn serialize(&self) -> Vec<u8> {
+    pub fn serialize(mut self) -> Vec<u8> {
         let mut bytes: Vec<u8> = Vec::with_capacity(512);
         let mut lt = LabelTree::default();
+        
+        let question_count = self.header.question_count() as usize;
+        let answer_count = self.header.answer_count() as usize;
+        let authority_count = self.header.authority_count() as usize;
+        let additional_count = self.header.additional_count() as usize;
 
         bytes.extend_from_slice(self.header.serialize().as_slice());
 
-        for i in 0..self.header.qdcount {
+        for _i in 0..question_count {
             let question = self
                 .questions
-                .get(i as usize)
+                .pop()
                 .expect("Question index does not exist.");
             question.serialize(&mut bytes, &mut lt);
         }
 
-        for i in 0..self.header.ancount {
+        for _i in 0..answer_count {
             let answer = self
                 .answers
-                .get(i as usize)
+                .pop()
                 .expect("Answer index does not exist.");
             answer.serialize(&mut bytes, &mut lt);
         }
 
-        for i in 0..self.header.nscount {
+        for _i in 0..authority_count {
             let authority = self
                 .authorities
-                .get(i as usize)
+                .pop()
                 .expect("Authority index does not exist.");
             authority.serialize(&mut bytes, &mut lt);
         }
 
-        for i in 0..self.header.arcount {
+        for _i in 0..additional_count {
             let additional = self
                 .additionals
-                .get(i as usize)
+                .pop()
                 .expect("Question index does not exist.");
             additional.serialize(&mut bytes, &mut lt);
         }
@@ -114,7 +120,7 @@ impl fmt::Display for Datagram {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut output = String::from("");
         output.push_str(&format!("HEADER\n{}", self.header.to_string()));
-        for i in 0..self.header.qdcount as usize {
+        for i in 0..self.header.question_count() as usize {
             output.push_str(&format!(
                 "Question {}\n{}",
                 i,
@@ -124,14 +130,14 @@ impl fmt::Display for Datagram {
                     .expect("Question index does not exist")
             ));
         }
-        for i in 0..self.header.ancount as usize {
+        for i in 0..self.header.answer_count() as usize {
             output.push_str(&format!(
                 "Answer {}\n{}",
                 i,
                 &self.answers.get(i).expect("Answer index does not exist")
             ));
         }
-        for i in 0..self.header.nscount as usize {
+        for i in 0..self.header.authority_count() as usize {
             output.push_str(&format!(
                 "Authority {}\n{}",
                 i,
@@ -141,7 +147,7 @@ impl fmt::Display for Datagram {
                     .expect("Authority index does not exist")
             ));
         }
-        for i in 0..self.header.arcount as usize {
+        for i in 0..self.header.additional_count() as usize {
             output.push_str(&format!(
                 "Additional {}\n{}",
                 i,
