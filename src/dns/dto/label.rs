@@ -7,18 +7,18 @@ pub struct Label {
 }
 
 impl Label {
-    pub fn unserialize(stream: &[u8], offset: usize) -> Result<(Label, usize), ()> {
+    pub fn unserialize(stream: &[u8], mut offset: usize) -> Result<(Label, usize), ()> {
         let length = stream[offset] as usize;
-        let value: String = stream[offset + 1..offset + 1 + length]
-            .iter()
-            .map(|b| b.clone() as char)
-            .collect();
-        let label = Label { value };
+        offset += 1;
+        
+        let label = Self {
+            value: String::from_utf8(stream[offset..offset + length].to_vec()).unwrap() 
+        };
         if !label.is_valid() {
             return Err(());
         }
 
-        Ok((label, offset + 1 + length))
+        Ok((label, offset + length))
     }
 
     pub fn serialize(&self, bytes: &mut Vec<u8>) {
