@@ -1,30 +1,43 @@
 use crate::cli::Args;
 use crate::dns::dto::name::Name;
-use std::fs;
+use std::collections::HashSet;
+use std::fs::File;
+use std::io::{self, BufRead};
+use std::path::Path;
+use lazy_static::lazy_static;
 
-pub fn is_blocked(domain: &Name) -> bool {
-    let blocklist_file: String = Args::get_params().file;
 
-    let handle = fs::read_to_string(blocklist_file);
-
-    match handle {
-        Ok(blocklist) => match_blocked(&blocklist, &domain.to_string()),
-        Err(_) => {
-            log::error!("File list not available, no filtering will be possible");
-            return false;
-        }
-    }
+lazy_static!{
+    static ref BLOCKLIST: HashSet<String> = init();
 }
 
-fn match_blocked(blocklist: &String, domain: &str) -> bool {
-    let domain_lower = domain.to_lowercase();
-    return blocklist.split("\n").any(|d: &str| {
-        let d = &d.trim().to_lowercase();
-        // exact match
-        return d == &domain_lower
-        // patern match (*.example.com)
-        || d.starts_with("*.") && domain_lower.ends_with(&d[2..d.len()]);
-    });
+fn init() -> HashSet<String> {
+    let blocklist_file: String = Args::get_params().file;
+
+    let mut hs = HashSet::new();
+    
+    match read_lines(blocklist_file) {
+        Ok(lines) => {
+            for line in lines {
+                if let Ok(content) = line {
+                    hs.insert(content);
+                }
+                    }
+        },
+        Err(_) => log::error!("File list not available, no filtering will be possible"),
+    }
+
+    hs
+}
+
+fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
+where P: AsRef<Path>, {
+    let file = File::open(filename)?;
+    Ok(io::BufReader::new(file).lines())
+}
+
+pub fn is_blocked(domain: &Name) -> bool {
+    BLOCKLIST.get(&domain.to_string()).is_some()
 }
 
 #[cfg(test)]

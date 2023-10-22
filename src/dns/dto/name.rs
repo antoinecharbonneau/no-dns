@@ -23,7 +23,7 @@ impl Name {
                 match Name::unserialize(stream, referenced_address) {
                     Ok((mut name, _)) => {
                         labels.append(&mut name.labels);
-                        return Ok((Name { labels }, i + 2));
+        return Ok((Name { labels }, i + 2));
                     }
                     Err(()) => return Err(()),
                 }
@@ -47,8 +47,7 @@ impl Name {
         let mut references: Vec<ReferencedLabel> = Vec::with_capacity(self.labels.len());
         for i in 0..(self.labels.len() - reference.index) {
             references.push(ReferencedLabel::new(self.labels[i].clone(), bytes.len() as u16));
-            bytes.append(&mut self.labels[i].serialize());
-            
+            self.labels[i].serialize(bytes);
         }
         if reference.is_valid() {
             log::debug!("Compression hit!");

@@ -3,7 +3,7 @@ use std::hash::Hash;
 
 #[derive(Clone, PartialEq, Hash, Eq, Ord, PartialOrd, Default)]
 pub struct Label {
-    value: String,
+    pub value: String,
 }
 
 impl Label {
@@ -21,22 +21,32 @@ impl Label {
         Ok((label, offset + 1 + length))
     }
 
-    pub fn serialize(&self) -> Vec<u8> {
-        let mut bytes = vec![self.value.len() as u8];
-        bytes.append(&mut self.value.clone().into_bytes());
-
-        bytes
+    pub fn serialize(&self, bytes: &mut Vec<u8>) {
+        bytes.push(self.value.len() as u8);
+        bytes.extend_from_slice(self.value.as_bytes());
     }
 
     pub fn is_valid(&self) -> bool {
-        let value: Vec<char> = self.value.chars().collect();
-        value.len() < 64
-            && char::is_ascii_alphanumeric(&value[0])
-            && char::is_ascii_alphanumeric(&value[value.len() - 1])
-            && value
-                .iter()
-                .all(|c| char::is_ascii_alphanumeric(c) || c == &'-')
-            && !value.iter().all(char::is_ascii_digit)
+        let bytes = self.value.as_bytes();
+        if self.value.len() >= 64 {
+            return false;
+        }
+        if !bytes[0].is_ascii_alphanumeric() {
+            return false;
+        }
+        if !bytes[self.value.len() - 1].is_ascii_alphanumeric() {
+            return false
+        }
+        let mut digits = 0;
+        for byte in bytes.iter() {
+            if !byte.is_ascii_alphanumeric() && byte != &b'-' {
+                return false;
+            }
+            if byte.is_ascii_digit() {
+                digits += 1;
+            }
+        }
+        digits < bytes.len()
     }
 }
 
@@ -82,6 +92,8 @@ mod tests {
     #[test]
     fn basic_serialize_test() {
         let bytes = [3, b'w', b'w', b'w'];
-        assert_eq!(Label::from("www").serialize(), bytes);
+        let mut result = Vec::new();
+        Label::from("www").serialize(result);
+        assert_eq!(result, bytes);
     }
 }

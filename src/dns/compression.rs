@@ -53,7 +53,7 @@ impl LabelTree {
                         self.elements.push(
                             TreeElement {
                                 referenced_label: rl.clone(),
-                                children: Vec::new(),
+                                children: Vec::with_capacity(4),
                             }
                         );
 
@@ -108,16 +108,16 @@ impl LabelTree {
 
 impl Default for LabelTree {
     fn default() -> Self {
+        let mut elements = Vec::with_capacity(4);
+        elements.push(TreeElement {
+            referenced_label: ReferencedLabel {
+                label: "".into(),
+                position: 0,
+            },
+            children: Vec::with_capacity(4), 
+        });
         Self {
-            elements: vec![
-                TreeElement {
-                    referenced_label: ReferencedLabel {
-                        label: "".into(),
-                        position: 0,
-                    },
-                    children: vec![],
-                }
-            ],
+            elements
         }
     }
 }
