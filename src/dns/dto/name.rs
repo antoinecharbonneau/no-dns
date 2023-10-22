@@ -1,4 +1,5 @@
 use core::fmt;
+use std::io::Write;
 
 use crate::dns::compression::{LabelTree, ReferencedLabel};
 
@@ -67,14 +68,20 @@ impl Name {
 
 impl fmt::Display for Name {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut s: Vec<u8> = Vec::with_capacity(16);
+        if self.labels.len() >= 1 {
+            s = self.labels[0].value.clone().into();
+            if self.labels.len() > 1 {
+                for label in self.labels[1..].iter() {
+                    s.push(b'.');
+                    let _ = s.write_all(label.value.as_bytes());
+                }
+            }
+        } 
         write!(
             f,
             "{}",
-            self.labels
-                .iter()
-                .map(|l| l.to_string())
-                .collect::<Vec<String>>()
-                .join(".")
+            String::from_utf8(s).unwrap(),
         )
     }
 }
