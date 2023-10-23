@@ -2,19 +2,20 @@ use core::fmt;
 use std::io::Write;
 
 use crate::dns::compression::{LabelTree, ReferencedLabel};
+use std::collections::VecDeque;
 
 use super::label::Label;
 
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Name {
-    pub labels: Vec<Label>,
+    pub labels: VecDeque<Label>,
 }
 
 impl Name {
     pub fn unserialize(stream: &[u8], offset: usize) -> Result<(Name, usize), ()> {
         let mut i = offset;
-        let mut labels: Vec<Label> = Vec::new();
+        let mut labels: VecDeque<Label> = VecDeque::new();
         while stream[i] > 0 {
             let sequence_info = stream[i] as usize;
 
@@ -24,41 +25,48 @@ impl Name {
                 match Name::unserialize(stream, referenced_address) {
                     Ok((mut name, _)) => {
                         labels.append(&mut name.labels);
-        return Ok((Name { labels }, i + 2));
+                        return Ok((Name { labels }, i + 2));
                     }
                     Err(()) => return Err(()),
                 }
             } else {
                 match Label::unserialize(stream, i) {
                     Ok((label, read_head)) => {
-                        labels.push(label);
+                        labels.push_back(label);
                         i = read_head;
                     }
                     Err(_) => return Err(()),
                 }
             }
         }
+        labels.make_contiguous();
 
         return Ok((Name { labels }, i + 1));
     }
 
-    pub fn serialize(&self, bytes: &mut Vec<u8>, tree: &mut LabelTree) {
-        let reference = tree.find_best_reference(self);
-        let mut references: Vec<ReferencedLabel> = Vec::with_capacity(self.labels.len());
-        for i in 0..(self.labels.len() - reference.index) {
-            references.push(ReferencedLabel::new(self.labels[i].clone(), bytes.len() as u16));
-            self.labels[i].serialize(bytes);
+    pub fn serialize(mut self, bytes: &mut Vec<u8>, tree: &mut LabelTree) {
+        let reference = tree.find_best_reference(&self);
+        let mut new_references: Vec<ReferencedLabel> = Vec::with_capacity(self.labels.len());
+
+        while self.labels.len() > 0 {
+            let label = self.labels.pop_front().unwrap();
+            if self.labels.len() >= reference.index {
+                let pointer = bytes.len();
+                label.serialize(bytes);
+                new_references.push(ReferencedLabel::new(label, pointer as u16));
+            } else {
+                new_references.push(ReferencedLabel::new(label, 0));
+            }
         }
+
         if reference.is_valid() {
             bytes.push(0xC0 | (reference.position >> 8) as u8);
             bytes.push(reference.position as u8);
         } else {
             bytes.push(0);
         }
-        self.labels[(self.labels.len() - reference.index)..]
-            .iter()
-            .for_each(|l| references.push(ReferencedLabel::new(l.clone(), 0)));
-        tree.insert(references);
+
+        tree.insert(new_references);
     }
 
     pub fn get_string(&self) -> String {
@@ -66,7 +74,7 @@ impl Name {
         if self.labels.len() >= 1 {
             s = self.labels[0].value.clone().into();
             if self.labels.len() > 1 {
-                for label in self.labels[1..].iter() {
+                for label in self.labels.as_slices().0[1..].iter() {
                     s.push(b'.');
                     let _ = s.write_all(label.value.as_bytes());
                 }
@@ -79,32 +87,24 @@ impl Name {
 
 impl fmt::Display for Name {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut s: Vec<u8> = Vec::with_capacity(16);
-        if self.labels.len() >= 1 {
-            s = self.labels[0].value.clone().into();
-            if self.labels.len() > 1 {
-                for label in self.labels[1..].iter() {
-                    s.push(b'.');
-                    let _ = s.write_all(label.value.as_bytes());
-                }
-            }
-        } 
         write!(
             f,
             "{}",
-            String::from_utf8(s).unwrap(),
+            self.get_string()
         )
     }
 }
 
 impl From<&str> for Name {
     fn from(value: &str) -> Self {
-        Name {
-            labels: value
+        let mut labels = value
                 .split(".")
                 .into_iter()
                 .map(|l| Label::from(l))
-                .collect::<Vec<Label>>(),
+                .collect::<VecDeque<Label>>();
+        labels.make_contiguous();
+        Name {
+            labels 
         }
     }
 }
