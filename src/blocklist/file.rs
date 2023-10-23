@@ -1,28 +1,31 @@
 use crate::cli::Args;
 use crate::dns::dto::name::Name;
-use std::collections::HashSet;
 use std::fs::File;
+use std::collections::HashSet;
 use std::io::{self, BufRead};
 use std::path::Path;
 use lazy_static::lazy_static;
+use fasthash::city;
 
 
 lazy_static!{
-    static ref BLOCKLIST: HashSet<String> = init();
+    static ref BLOCKLIST: HashSet<String, city::Hash64> = init();
 }
 
-fn init() -> HashSet<String> {
+fn init() -> HashSet<String, city::Hash64> {
     let blocklist_file: String = Args::get_params().file;
 
-    let mut hs = HashSet::new();
+    let mut hs: HashSet<String, city::Hash64> = HashSet::with_capacity_and_hasher(16, city::Hash64);
     
     match read_lines(blocklist_file) {
         Ok(lines) => {
             for line in lines {
                 if let Ok(content) = line {
-                    hs.insert(content);
-                }
+                    if content.len() > 0 {
+                        hs.insert(content);
                     }
+                }
+            }
         },
         Err(_) => log::error!("File list not available, no filtering will be possible"),
     }
@@ -37,7 +40,7 @@ where P: AsRef<Path>, {
 }
 
 pub fn is_blocked(domain: &Name) -> bool {
-    BLOCKLIST.get(&domain.get_string()).is_some()
+    BLOCKLIST.contains(&domain.get_string())
 }
 
 #[cfg(test)]

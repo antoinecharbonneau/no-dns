@@ -2,12 +2,13 @@ use std::collections::HashMap;
 use std::sync::RwLock;
 use std::time::Instant;
 use lazy_static::lazy_static;
+use fasthash::farm::Hash64 as HasherFn;
 
 use super::dto::question::Question;
 use super::dto::resource_record::ResourceRecord;
 
 lazy_static!{
-    static ref CACHE: RwLock<HashMap<Question, (ResourceRecord, Instant)>> = RwLock::new(HashMap::new());
+    static ref CACHE: RwLock<HashMap<Question, (ResourceRecord, Instant), HasherFn>> = RwLock::new(HashMap::with_capacity_and_hasher(16, HasherFn));
 }
 
 pub fn get(question: &Question) -> Option<ResourceRecord> {
@@ -41,16 +42,17 @@ pub fn insert(question: &Question, rr: ResourceRecord) {
 pub fn reset() {
     log::info!("Resetting cache");
     let mut hash = CACHE.write().expect("Cache lock poisoned");
-    *hash = HashMap::new();
+    *hash = HashMap::with_capacity_and_hasher(128, HasherFn);
 }
 
 #[cfg(test)]
 mod tests {
 
     use super::*;
-    use crate::dns::{dto::{
-        name::Name,
-    }, compression::LabelTree};
+    use crate::dns::{
+        dto::name::Name,
+        compression::LabelTree
+    };
     use std::thread::sleep;
     use std::time::Duration;
     use std::sync::Mutex;
