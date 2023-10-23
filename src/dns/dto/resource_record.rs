@@ -7,25 +7,6 @@ use super::name::Name;
 use super::question::Question;
 
 #[derive(Clone, PartialEq)]
-// pub struct ResourceRecord {
-//     /// Name field of the resource record
-//     pub name: Name,
-//
-//     /// Type of resource record
-//     pub resource_type: TYPE,
-//
-//     /// Class of resource record
-//     pub class: CLASS,
-//
-//     /// Time to live (seconds)
-//     pub ttl: u32,
-//
-//     /// Number of bytes in RDATA
-//     pub rdlength: u16,
-//
-//     /// Resource data
-//     pub rdata: Vec<u8>,
-// }
 pub struct ResourceRecord {
     pub name: Name,
     content: Vec<u8>,
@@ -39,21 +20,6 @@ impl ResourceRecord {
 
         let mut content: Vec<u8> = vec![0; 10 + rdlength];
         content.copy_from_slice(&stream[content_begin..content_end]);
-        // let resource_type =
-        //     TYPE::from_u16((stream[i as usize] as u16) << 8 | stream[(i + 1) as usize] as u16);
-        // i += 2;
-        // let class =
-        //     CLASS::from_u16((stream[i as usize] as u16) << 8 | stream[(i + 1) as usize] as u16);
-        // i += 2;
-        // let ttl = (stream[i as usize] as u32) << 24
-        //     | (stream[(i + 1) as usize] as u32) << 16
-        //     | (stream[(i + 2) as usize] as u32) << 8
-        //     | (stream[(i + 3) as usize] as u32);
-        // i += 4;
-        // let rdlength = (stream[i as usize] as u16) << 8 | stream[(i + 1) as usize] as u16;
-        // i += 2;
-        // let rdata = stream[i as usize..i + rdlength as usize].to_vec();
-        // i += rdlength as usize;
         return (
             ResourceRecord {
                 name,

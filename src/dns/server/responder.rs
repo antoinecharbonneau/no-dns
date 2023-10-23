@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::time::Instant;
 use tokio::net::UdpSocket;
 
-pub async fn handle(buf: [u8; 1024], address: SocketAddr, socket: Arc<UdpSocket>) {
+pub async fn handle(buf: &[u8], address: SocketAddr, socket: Arc<UdpSocket>) {
     let recv_time = Instant::now();
     let datagram = Datagram::unserialize(&buf);
     log::debug!("Rcvd pkt from {}\n{}", address, datagram);
@@ -92,17 +92,17 @@ fn get_blocked_answer(datagram: &Datagram) -> Option<Datagram> {
 
 fn get_cached_answer(datagram: &Datagram) -> Option<Datagram> {
     let question = &datagram.questions[0];
-    let mut header = datagram.header.clone();
-    header.set_question(false);
-    header.set_recursion_available(true);
-    header.set_authoritative_answer(false);
-    header.set_truncated(false);
-    header.set_answer_count(1);
-    header.set_authority_count(0);
-    header.set_additional_count(0);
     let cache_result = Cache::get(question);
     match cache_result {
         Some(answer) => {
+            let mut header = datagram.header.clone();
+            header.set_question(false);
+            header.set_recursion_available(true);
+            header.set_authoritative_answer(false);
+            header.set_truncated(false);
+            header.set_answer_count(1);
+            header.set_authority_count(0);
+            header.set_additional_count(0);
             return Some(Datagram {
                 header,
                 questions: vec![question.clone()],

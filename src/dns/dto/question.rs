@@ -6,18 +6,13 @@ use core::fmt;
 
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct Question {
-    /// # QNAME (Question name)
-    ///
-    /// The domain name used in the question.
-    ///
-    /// Length: Dynamic (see Name struct for more informations)
-    pub qname: Name,
     pub content: [u8; 4],
+    pub qname: Name,
 }
 
 impl Question {
     pub fn unserialize(stream: &[u8], offset: u16) -> (Self, u16) {
-        let (qname, mut i) = Name::unserialize(stream, offset as usize).unwrap();
+        let (qname, i) = Name::unserialize(stream, offset as usize).unwrap();
         let mut content: [u8; 4] = [0; 4];
         content.copy_from_slice(&stream[i..i + 4]);
 

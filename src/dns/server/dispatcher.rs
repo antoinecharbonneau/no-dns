@@ -17,12 +17,10 @@ pub async fn start() {
 
 async fn dispatch_udp_requests(arc_socket: Arc<UdpSocket>) {
     loop {
-        let mut buf: [u8; 1024] = [0; 1024];
+        let mut buf: [u8; 512] = [0; 512];
         let arc_socket_clone = Arc::clone(&arc_socket);
 
-        let result = (*arc_socket_clone).recv_from(&mut buf);
-
-        match result.await {
+        match (*arc_socket_clone).recv_from(&mut buf).await {
             Ok((bytes, client_address)) => {
                 log::info!(
                     "Received connection from {} of length {}",
@@ -35,7 +33,7 @@ async fn dispatch_udp_requests(arc_socket: Arc<UdpSocket>) {
                 );
                 let arc_socket_clone = Arc::clone(&arc_socket);
                 tokio::spawn(async move {
-                    responder::handle(buf, client_address, arc_socket_clone).await;
+                    responder::handle(&buf, client_address, arc_socket_clone).await;
                 });
             }
             Err(e) => {
