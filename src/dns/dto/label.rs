@@ -48,6 +48,10 @@ impl Label {
         }
         digits < bytes.len()
     }
+
+    pub fn as_str(&self) -> &str {
+        self.value.as_str()
+    }
 }
 
 impl From<&str> for Label {

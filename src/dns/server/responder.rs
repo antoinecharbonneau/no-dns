@@ -83,7 +83,7 @@ async fn respond_question(datagram: &Datagram, address: &SocketAddr) -> Datagram
 fn get_blocked_answer(datagram: &Datagram) -> Option<Datagram> {
     // TODO: Add address so that blocking can be done on a per address basis ?
     let question = &datagram.questions[0];
-    if crate::blocklist::file::is_blocked(&question.qname) {
+    if crate::blocklist::contains(&question.qname.as_labels()) {
         return Some(empty_answer(&datagram));
     } else {
         return None;

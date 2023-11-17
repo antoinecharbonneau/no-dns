@@ -1,28 +1,21 @@
-use crate::cli::Args;
-use crate::dns::dto::name::Name;
 use std::fs::File;
-use std::collections::HashSet;
 use std::io::{self, BufRead};
 use std::path::Path;
-use lazy_static::lazy_static;
-use fasthash::city;
 
+use crate::cli::Args;
+use crate::dns::dto::name::Name;
 
-lazy_static!{
-    static ref BLOCKLIST: HashSet<String, city::Hash64> = init();
-}
-
-fn init() -> HashSet<String, city::Hash64> {
+pub fn get_elements() -> Vec<Name> {
     let blocklist_file: String = Args::get_params().file;
 
-    let mut hs: HashSet<String, city::Hash64> = HashSet::with_capacity_and_hasher(16, city::Hash64);
+    let mut list: Vec<Name> = Vec::new();
     
     match read_lines(blocklist_file) {
         Ok(lines) => {
             for line in lines {
                 if let Ok(content) = line {
                     if content.len() > 0 {
-                        hs.insert(content);
+                        list.push(Name::from(content.as_str()));
                     }
                 }
             }
@@ -30,17 +23,13 @@ fn init() -> HashSet<String, city::Hash64> {
         Err(_) => log::error!("File list not available, no filtering will be possible"),
     }
 
-    hs
+    list
 }
 
 fn read_lines<P>(filename: P) -> io::Result<io::Lines<io::BufReader<File>>>
 where P: AsRef<Path>, {
     let file = File::open(filename)?;
     Ok(io::BufReader::new(file).lines())
-}
-
-pub fn is_blocked(domain: &Name) -> bool {
-    BLOCKLIST.contains(&domain.get_string())
 }
 
 #[cfg(test)]

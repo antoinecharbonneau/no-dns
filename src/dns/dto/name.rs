@@ -1,5 +1,6 @@
 use core::fmt;
 use std::io::Write;
+use std::hash::{Hash, Hasher};
 
 use crate::dns::compression::{LabelTree, ReferencedLabel};
 use std::collections::VecDeque;
@@ -7,7 +8,7 @@ use std::collections::VecDeque;
 use super::label::Label;
 
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct Name {
     pub labels: VecDeque<Label>,
 }
@@ -83,6 +84,10 @@ impl Name {
 
         String::from_utf8(s).unwrap()
     }
+
+    pub fn as_labels(&self) -> &[Label]{
+        self.labels.as_slices().0
+    }
 }
 
 impl fmt::Display for Name {
@@ -92,6 +97,12 @@ impl fmt::Display for Name {
             "{}",
             self.get_string()
         )
+    }
+}
+
+impl Hash for Name {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.labels.as_slices().0[0..self.labels.len() - 1].iter().for_each(|l| l.hash(state));
     }
 }
 
